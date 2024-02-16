@@ -73,6 +73,9 @@ taxicabs-own [
   d-ycor2 ; pickup coordinates
   pickup-xcor
   pickup-ycor
+  ;;vision
+  vision-length
+  vision-width
 ]
 
 patches-own[
@@ -442,6 +445,8 @@ to setup-taxicabs
     set trip-distance-lst []
     set trip-income-lst []
     set trip-duration-lst []
+    set vision-length 7
+    set vision-width 3
   ]
   ; put those cabs on the road
   ; 0 up; 90 right; 180 down; 270 left
@@ -566,7 +571,8 @@ end
 to passengers-wait-for-ride
   ask passengers [
     set been-waiting been-waiting + 1
-    if been-waiting >= patience-to-wait [ die ]
+    ifelse color = blue[]
+    [if been-waiting >= patience-to-wait [ die ]]
   ]
 end
 
@@ -729,7 +735,7 @@ end
 to pickup-passengers
   ; setting or passing along trip-related variables
   if vacancy? [
-    if any? passengers-here[
+    ifelse any? passengers-here[
       ; identify a passenger to pickup
       let target-passenger one-of passengers-here ;;"-here" is a method of turtles. It Reports an agentset containing all the turtles on the caller's patch (including the caller itself if it's a turtle).
       ; pick up passengers and taxicab is no longer vacant
@@ -761,6 +767,30 @@ to pickup-passengers
       update-destination-coordinates
       highlight-destination-patches 117
       change-direction-for-delivery
+    ]
+    [
+      ifelse color = blue[
+      change-direction-for-delivery]
+      [ if any? passengers in-cone 5 20 or any? passengers in-radius 2
+        [
+            set color blue
+            let passengers-nearby-c (passengers in-cone 5 20)
+            let passengers-nearby-r (passengers in-radius 2)
+            let all-passengers-nearby (turtle-set passengers-nearby-c passengers-nearby-r)
+            let target-passenger one-of all-passengers-nearby
+             ; update destination coordinates
+            set d-xcor [xcor] of target-passenger
+            set d-ycor [ycor] of target-passenger
+            ; indicate pickup road is horizontal or vertical
+            set pickup-on-horizontal? (left? or right?)
+            set pickup-on-vertical? (up? or down?)
+             ; update destination coordinates
+            update-destination-coordinates
+            ask target-passenger
+            [set color blue]
+        ]]
+
+
     ]
   ]
 end
@@ -1071,10 +1101,10 @@ end
 ; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
-270
-10
-1188
-929
+272
+12
+1189
+930
 -1
 -1
 14.0
@@ -1123,7 +1153,7 @@ num-taxicab
 num-taxicab
 1
 50
-1.0
+7.0
 1
 1
 NIL
@@ -1233,7 +1263,7 @@ prob-cbd-cbd-AM
 prob-cbd-cbd-AM
 0
 1
-0.0
+0.02
 0.01
 1
 NIL
@@ -1263,7 +1293,7 @@ prob-cbd-res-AM
 prob-cbd-res-AM
 0
 1
-0.0
+1.0
 0.01
 1
 NIL
@@ -2070,7 +2100,7 @@ each-tick-cost
 each-tick-cost
 0.01
 5
-0.5
+0.52
 0.01
 1
 $
