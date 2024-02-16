@@ -571,8 +571,8 @@ end
 to passengers-wait-for-ride
   ask passengers [
     set been-waiting been-waiting + 1
-
-    if been-waiting >= patience-to-wait [ die ]
+    ifelse color = blue[]
+    [if been-waiting >= patience-to-wait [ die ]]
   ]
 end
 
@@ -735,9 +735,9 @@ end
 to pickup-passengers
   ; setting or passing along trip-related variables
   if vacancy? [
-    ifelse any? passengers-here[
+    ifelse any? passengers-here and any? in-link-neighbors  [
       ; identify a passenger to pickup
-      let target-passenger one-of passengers-here ;;"-here" is a method of turtles. It Reports an agentset containing all the turtles on the caller's patch (including the caller itself if it's a turtle).
+      let target-passenger one-of in-link-neighbors  ;;"-here" is a method of turtles. It Reports an agentset containing all the turtles on the caller's patch (including the caller itself if it's a turtle).
       ; pick up passengers and taxicab is no longer vacant
       set vacancy? false
       ; color taxicabs to indicate occupancy
@@ -767,17 +767,20 @@ to pickup-passengers
       update-destination-coordinates
       highlight-destination-patches 117
       change-direction-for-delivery
+
     ]
     [
       ifelse color = blue[
       change-direction-for-delivery]
-      [ if any? passengers in-cone 5 20 or any? passengers in-radius 2
+      [ if (any? passengers with [color = 9.9] in-cone 5 20 ) or (any? passengers with [color = 9.9] in-radius 2 )
         [
             set color blue
             let passengers-nearby-c (passengers in-cone 5 20)
             let passengers-nearby-r (passengers in-radius 2)
             let all-passengers-nearby (turtle-set passengers-nearby-c passengers-nearby-r)
-            let target-passenger one-of all-passengers-nearby
+            let target-passenger one-of all-passengers-nearby with [color = 9.9]
+            ask target-passenger
+            [set color blue]
              ; update destination coordinates
             set d-xcor [xcor] of target-passenger
             set d-ycor [ycor] of target-passenger
@@ -786,11 +789,9 @@ to pickup-passengers
             set pickup-on-vertical? (up? or down?)
              ; update destination coordinates
             update-destination-coordinates
-            ask target-passenger
-            [set color blue]
+            change-direction-for-delivery
+            create-link-with target-passenger
         ]]
-
-
     ]
   ]
 end
@@ -1114,8 +1115,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 -32
 32
@@ -1263,7 +1264,7 @@ prob-cbd-cbd-AM
 prob-cbd-cbd-AM
 0
 1
-0.02
+0.03
 0.01
 1
 NIL
