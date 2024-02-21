@@ -1,0 +1,6 @@
+click
+matplotlib
+numba==0.53.0
+numpy==1.19.5
+shapely
+pandas
