@@ -1,8 +1,13 @@
-import click
-import numpy as np
+import sys  # nopep8
+print(sys.path)  # nopep8
+sys.path.append('..')  # nopep8
+print(sys.path)  # nopep8
+# nopep8
+import click  # nopep8
 
-from experiments.caging_2d import run_simulation
-from experiments.visualization import caging_visuals
+import numpy as np  # nopep8
+from experiments.caging_2d import run_simulation  # nopep8
+from experiments.visualization import caging_visuals  # nopep8
 
 
 @click.command()
@@ -61,7 +66,7 @@ def run(n_seeds=1,
         tau=0.2,
         t_max=3 * 10 ** 3,
         save_folder="",
-        visualization=False):
+        visualization=True):
     size_s = np.sqrt(n_school / rho_s)
     if zoo_s is None:
         zoo_s = zoo_m_s * size_s
@@ -107,9 +112,11 @@ def run(n_seeds=1,
                                                    mu=mu,
                                                    tau=tau,
                                                    t_max=t_max, )
-        np.save(save_folder + filename.format(TYPE="S", SEED=seed) + ".npy", school_poses)
-        np.save(save_folder + filename.format(TYPE="A", SEED=seed) + ".npy", agent_poses)
-
+        np.save(save_folder + filename.format(TYPE="S",
+                SEED=seed) + ".npy", school_poses)
+        np.save(save_folder + filename.format(TYPE="A",
+                SEED=seed) + ".npy", agent_poses)
+        caging_visuals.run(seed, school_poses, agent_poses)
         if visualization:
             caging_visuals.run(seed, school_poses, agent_poses)
 

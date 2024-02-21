@@ -6,6 +6,8 @@ Stef Van Havermaet et al. 2022
 Language: Python3.9 \
 Packages: requirements.txt
 
+> Note that the requirements could actually bring errors. For errors running `caging_movement.py` , if it has sth to do with numba,  install the newest version using `pip install numba --upgrade`  will solve the problem, if the problem is `ModuleNotFoundError: No module named 'experiments'` , use `sys.path.append('..')` .
+
 ```
 # Ubuntu commands
 sudo apt-get -y update
