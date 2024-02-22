@@ -9,6 +9,8 @@ import numpy as np  # nopep8
 from experiments.caging_2d import run_simulation  # nopep8
 from experiments.visualization import caging_visuals  # nopep8
 
+# the "click"s are used to create command line options.
+
 
 @click.command()
 @click.option('--n_seeds', type=int, default=1)

@@ -38,9 +38,11 @@ def run_simulation(n_school,
     for t in range(1, t_max + 1):
         # # SCHOOL
         next_school_poses = np.zeros_like(current_school_poses)
-        # compute next position
-        next_school_poses[:, 0] = current_school_poses[:, 0] + v_s * np.cos(current_school_poses[:, 2])
-        next_school_poses[:, 1] = current_school_poses[:, 1] + v_s * np.sin(current_school_poses[:, 2])
+        # compute next position, with a fixed velocity and the heading
+        next_school_poses[:, 0] = current_school_poses[:,
+                                                       0] + v_s * np.cos(current_school_poses[:, 2])
+        next_school_poses[:, 1] = current_school_poses[:,
+                                                       1] + v_s * np.sin(current_school_poses[:, 2])
         # compute next orientation
         for i in range(n_school):
             # desired orientation [0, 2π]
@@ -58,9 +60,13 @@ def run_simulation(n_school,
                                                                    zoa_s, kor_s, koo_s, koa_s)
             else:
                 force = np.zeros(2)
+            print("current school poses", current_school_poses)
+            print("current_school_poses[i, 2] ", current_school_poses[i, 2])
+            # force is a two element vector, the first one being x-axis and the second one being y-axis
             d_theta = np.arctan2(force[1], force[0]) % (2 * np.pi)
             # necessary turn
             turn = current_school_poses[i, 2] - d_theta
+            print("turn", turn)
             # converted to [-π, π]
             turn = (turn + np.pi) % (2 * np.pi) - np.pi
             # rotating duration (limited)
@@ -68,7 +74,8 @@ def run_simulation(n_school,
             # limited turn
             turn = np.sign(turn) * w_s_max * dt_w
             # remaining duration to move
-            next_school_poses[i, 2] = (current_school_poses[i, 2] - turn + np.random.randn() * sigma_s) % (2 * np.pi)
+            next_school_poses[i, 2] = (
+                current_school_poses[i, 2] - turn + np.random.randn() * sigma_s) % (2 * np.pi)
             # remaining duration to move
             v_s[i] = v_s_max * (dt - dt_w)
         # memory swap and store

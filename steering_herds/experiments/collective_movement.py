@@ -1,8 +1,12 @@
-import click
-import numpy as np
+import sys  # nopep8
+print(sys.path)  # nopep8
+sys.path.append('..')  # nopep8
 
-from experiments.collective_2d import run_simulation
-from experiments.visualization import collective_visuals
+import click  # nopep8
+import numpy as np  # nopep8
+
+from experiments.collective_2d import run_simulation  # nopep8
+from experiments.visualization import collective_visuals  # nopep8
 
 
 @click.command()
@@ -83,7 +87,8 @@ def run(n_seeds=1,
                                       v_s_max=v_s_max,
                                       w_s_max=w_s_max,
                                       t_max=t_max, )
-        np.save(save_folder + filename.format(TYPE="S", SEED=seed) + ".npy", school_poses)
+        np.save(save_folder + filename.format(TYPE="S",
+                SEED=seed) + ".npy", school_poses)
 
         if visualization:
             collective_visuals.run(seed, school_poses)

@@ -17,7 +17,8 @@ def angle_between_vectors(a, b):
     norms = np.linalg.norm(a) * np.linalg.norm(b)
 
     cos = inner / norms
-    rad = np.arccos(max(min(cos, 1.0), -1.0))  # rad = np.arccos(np.clip(cos, -1.0, 1.0))
+    # rad = np.arccos(np.clip(cos, -1.0, 1.0))
+    rad = np.arccos(max(min(cos, 1.0), -1.0))
 
     return np.pi - rad
 
@@ -78,6 +79,8 @@ def row_norm(matrix):
 @numba.jit(nopython=True, cache=True, fastmath=True)
 def row_normalize(matrix):
     return matrix / (np.reshape(row_norm(matrix), (-1, 1)) + 1e-8)
+    # One shape dimension can be -1, in which case it is inferred from the length of the array and remaining dimensions.
+    # np.reshape(matrix, x,y) reshapes the matrix in to a x by y matrix
 
 
 @numba.jit(nopython=True, cache=True, fastmath=True)
