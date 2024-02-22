@@ -26,21 +26,34 @@ to go
 end
 
 to update-heading
-  get-neighours
+  ;; cannot get all the neighours with one function because "report" does not support reporting a list consisting of lists, and it will give you an error "Expected a literal value" if you try that.
+  let index-r get-neighours-repulsion
+  let index-o get-neighours-alignment
+  let index-a get-neighours-attraction
+  print index-r
   calc_force
   calc_turn
 end
 
-to get-neighours
+to-report get-neighours-repulsion
   let index-r [who] of (turtles in-radius zr)
+  report index-r
+end
+
+to-report get-neighours-alignment
+
   let index-o [who] of (turtles in-radius zo)
-  let index-z [who] of (turtles in-radius zr)
-  print index-r
-  print index-o
-  print index-z
+  report index-o
+end
+
+to-report get-neighours-attraction
+
+  let index-a [who] of (turtles in-radius za)
+  report index-a
 end
 
 to calc_force
+
 end
 
 to calc_turn
@@ -324,6 +337,23 @@ za
 1
 NIL
 HORIZONTAL
+
+BUTTON
+840
+132
+923
+165
+go once
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## WHAT IS IT?
