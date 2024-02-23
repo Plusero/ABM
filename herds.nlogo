@@ -1,6 +1,10 @@
 turtles-own [
   flockmates         ;; agentset of nearby turtles
-  nearest-neighbor   ;; closest one of our flockmates
+  nearest-neighbor
+  index-r
+  index-o
+  index-a
+  ;; closest one of our flockmates
 ]
 
 to setup
@@ -27,30 +31,32 @@ end
 
 to update-heading
   ;; cannot get all the neighours with one function because "report" does not support reporting a list consisting of lists, and it will give you an error "Expected a literal value" if you try that.
-  let index-r get-neighours-repulsion
-  let index-o get-neighours-alignment
-  let index-a get-neighours-attraction
-  print index-r
+  get-neighbours
   calc_force
   calc_turn
 end
 
-to-report get-neighours-repulsion
-  let index-r [who] of (turtles in-radius zr)
-  report index-r
+to get-neighbours
+  set index-r [who] of (turtles in-radius zr)
+  set index-o [who] of (turtles in-radius zo)
+  set index-a [who] of (turtles in-radius za)
+;  report [index-r index-o index-a]
 end
 
-to-report get-neighours-alignment
+;to-report get-neighbours-repulsion
+;  let index-r [who] of (turtles in-radius zr)
+;  report index-r
+;end
 
-  let index-o [who] of (turtles in-radius zo)
-  report index-o
-end
+;to-report get-neighbours-alignment
+;  let index-o [who] of (turtles in-radius zo)
+;  report index-o
+;end
 
-to-report get-neighours-attraction
-
-  let index-a [who] of (turtles in-radius za)
-  report index-a
-end
+;to-report get-neighbours-attraction
+;  let index-a [who] of (turtles in-radius za)
+;  report index-a
+;end
 
 to calc_force
 
