@@ -262,7 +262,7 @@ population
 population
 1
 1000
-63.0
+35.0
 1
 1
 NIL
@@ -284,10 +284,10 @@ patches
 HORIZONTAL
 
 CHOOSER
-12
-373
-252
-418
+0
+549
+240
+594
 question
 question
 "0 None" "1 Are the boids aligned?" "2 Are the boids in separation or cohesion mode?" "3 Do all of the boids end up following the same leader?" "4 Are the boids aligned? Are the boids in separation or cohesion mode?" "5 herders"
@@ -319,10 +319,10 @@ You can change the question\nwhile the simulation is running. \n(While the go bu
 0
 
 TEXTBOX
-14
-445
-251
-473
+20
+422
+257
+450
 reduce the step to better\nobserve the interactions
 11
 0.0
