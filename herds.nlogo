@@ -1,4 +1,4 @@
-  globals [
+globals [
     cohesion-flag
     normal-flag
     base-speed-herd
@@ -22,6 +22,7 @@
     attraction-mates
     t-force-x
     t-force-y
+    real-herdanimal-heading
   ]
 
   links-own [
@@ -30,16 +31,18 @@
     happiness ;; happiness of the animal based on closeness of others and repulsiveness of robot
     force-x
     force-y
+    real-link-heading
   ]
 
   robots-own [
     repulsion
+    real-robot-heading
   ]
 
   to setup
     clear-all
     random-seed 73 ;;  it is the best number
-    set base-speed-herd 1
+    set base-speed-herd 0.1
     set-default-shape herdanimals "cow"
     set-default-shape robots   "target"
     ifelse autozones [
@@ -71,6 +74,7 @@
     ; "None"
     clear-links
     ask herdanimals [linking]               ; this procedure links all the herdanimals with their flockmates
+    update-real-heading                     ; this procedure converts the inherent headings of all agents to usefull headings,, old headings: NESW 0,90,180,270 -> new headings: NESW 
     ask links [link-attribute-calculations] ; this procedure calulates the link attributes dx, dy, and happiness
     ask herdanimals [movement]              ; this procedure results in movement for the herdanimals
     ask robots [botmove]                    ; this procedure results in movement for the robots
@@ -92,11 +96,28 @@
     get-mates                      ; this procedure links the herdanimals with their flockmates to make calculations easier
   end
 
+  to update-real-heading
+    ask links [update-real-heading-l]
+    ask robots [update-real-heading-r]
+    ask herdanimals [update-real-heading-h] 
+  end
+
+  to update-real-heading-l
+    set real-link-heading ( - link-heading + 90)
+  end  
+
+  to update-real-heading-r
+    set real-robot-heading ( - heading + 90)
+  end  
+   
+  to update-real-heading-h
+    set real-herdanimal-heading ( - heading + 90)
+  end  
+
   to link-attribute-calculations
     calc-dxdy
     calc-happiness
     calc-force
-
   end
 
 
@@ -134,8 +155,8 @@
   end
 
   to calc-dxdy
-    set d-x link-length * cos link-heading
-    set d-y link-length * sin link-heading
+    set d-x link-length * cos real-link-heading
+    set d-y link-length * sin real-link-heading
   end
 
   to calc-happiness
@@ -149,18 +170,26 @@
   to calc-force
     ; this procedure calulates the heading (direction) as well as the stepsize of the herdanimal
     if link-length < d0 [
-      set force-x (d-x * -1) * (1 - happiness)
-      set force-y (d-y * -1) * (1 - happiness)
+      set force-x (d-x * -1) * (1 - happiness) * repulsion-weight
+      set force-y (d-y * -1) * (1 - happiness) * repulsion-weight
+      print 111111
     ]
     if link-length <= d1 and link-length >= d0
     [
-      set force-x random 0.001 * (1 - happiness)
-      set force-y random 0.001 * (1 - happiness)
+    set force-x (cos (sum [real-herdanimal-heading] of both-ends) / 2 ) * alignment-weight 
+    set force-y (sin (sum [real-herdanimal-heading] of both-ends) / 2 ) * alignment-weight
+;        set force-x (cos (sum [heading] of both-ends) * (1 - happiness)) * alignment-weight
+;    set force-y (sin (sum [heading] of both-ends) * (1 - happiness)) * alignment-weight
+;      set force-x random 0.001 * (1 - happiness)
+;      set force-y random 0.001 * (1 - happiness)
     ]
     if link-length > d1
     [
-      set force-x d-x * (1 - happiness)
-      set force-y d-y * (1 - happiness)
+;      set force-x d-x * (1 - happiness) * attraction-weight
+;      set force-y d-y * (1 - happiness) * attraction-weight
+      set force-x d-x  * attraction-weight * happiness
+      set force-y d-y  * attraction-weight * happiness
+      print 333
     ]
   end
 
@@ -168,12 +197,19 @@
     set t-force-x (sum [ force-x ] of my-out-links)
     set t-force-y (sum [ force-y ] of my-out-links)
     let turn 0
+    let max-turn 2
   ifelse t-force-x = 0 and t-force-y = 0[
     set turn 0
   ]
   [
-    set turn atan t-force-x t-force-y
+    ifelse  ( atan t-force-x t-force-y ) < max-turn [
+      set turn atan t-force-x t-force-y
+    ][
+      set turn max-turn
+    ]
   ]
+  print 1
+  print turn
   set heading heading - turn
     ; this procedure updates the heading (direction) of the herdanimal
   end
@@ -183,6 +219,9 @@
     ; move that botty
   end
 
+
+  ; Copyright 1998 Uri Wilensky.
+  ; See Info tab for full copyright and license.
 
 
 
@@ -262,7 +301,7 @@ population
 population
 1
 1000
-63.0
+59.0
 1
 1
 NIL
@@ -277,7 +316,7 @@ vision
 vision
 0
 50
-30.0
+20.5
 0.5
 1
 patches
@@ -348,7 +387,7 @@ happyzone-min
 happyzone-min
 0
 100
-1.9
+2.5
 0.1
 1
 NIL
@@ -363,8 +402,53 @@ happyzone-max
 happyzone-max
 0
 100
-7.0
+10.1
 0.1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+17
+485
+189
+518
+repulsion-weight
+repulsion-weight
+0
+1
+0.0
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+18
+525
+190
+558
+alignment-weight
+alignment-weight
+0
+1
+1.0
+0.01
+1
+NIL
+HORIZONTAL
+
+SLIDER
+19
+564
+191
+597
+attraction-weight
+attraction-weight
+0
+1
+0.0
+0.01
 1
 NIL
 HORIZONTAL
