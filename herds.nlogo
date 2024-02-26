@@ -1,158 +1,202 @@
-turtles-own [
-  flockmates         ;; agentset of nearby turtles
-  nearest-neighbor
-  index-r
-  index-o
-  index-a
-  ;; closest one of our flockmates
-]
+  globals [
+    cohesion-flag
+    normal-flag
+    base-speed-herd
+    base-speed-bot
+    repulsion-bot
+    d0  ; happy-zone-min
+    d1  ; happy-zone-max
+    k0  ; steepness
+    k1  ; steepness
+    x0  ; halfwaypoint
+    x1  ; halfwaypoint
+    knn ; k nearest neighbor
+  ]
+  breed [ herdanimals herdanimal ]
+  breed [ robots robot ]
 
-to setup
-  clear-all
-  create-turtles population
-    [ set color yellow - 2 + random 7  ;; random shades look nice
-      set size 1.5  ;; easier to see
-      setxy random-xcor random-ycor
-      set flockmates no-turtles ]
-  reset-ticks
-end
+  herdanimals-own [
+    flockmates
+    repulsion-mates
+    random-mates
+    attraction-mates
+    t-force-x
+    t-force-y
+  ]
 
-to go
-  ask turtles [ flock ]
-  ask turtles [ update-heading]
-  ;; the following line is used to make the turtles
-  ;; animate more smoothly.
-  repeat 5 [ ask turtles [ fd 0.2 ] display ]
-  ;; for greater efficiency, at the expense of smooth
-  ;; animation, substitute the following line instead:
-  ;;   ask turtles [ fd 1 ]
-  tick
-end
+  links-own [
+    d-x
+    d-y
+    happiness ;; happiness of the animal based on closeness of others and repulsiveness of robot
+    force-x
+    force-y
+  ]
 
-to update-heading
-  ;; cannot get all the neighours with one function because "report" does not support reporting a list consisting of lists, and it will give you an error "Expected a literal value" if you try that.
-  get-neighbours
-  calc_force
-  calc_turn
-end
+  robots-own [
+    repulsion
+  ]
 
-to get-neighbours
-  set index-r [who] of (turtles in-radius zr)
-  set index-o [who] of (turtles in-radius zo)
-  set index-a [who] of (turtles in-radius za)
-;  report [index-r index-o index-a]
-end
+  to setup
+    clear-all
+    random-seed 73 ;;  it is the best number
+    set base-speed-herd 1
+    set-default-shape herdanimals "cow"
+    set-default-shape robots   "target"
+    ifelse autozones [
+    set d0 happyzone-min
+    set d1 happyzone-max
 
-;to-report get-neighbours-repulsion
-;  let index-r [who] of (turtles in-radius zr)
-;  report index-r
-;end
+  ][
+      set d0 10
+      set d1 30
+    ]
+    set x0 ( d0 / 2 )
+    set x1 ( d1 * 2 )
+    set k0 ( 5 / x0 )
+    set k1 ( 10 / x1 )
+    set cohesion-flag true
+    set normal-flag true
+    set knn 5
+    create-herdanimals population
+      [ set size 1.5
+        if first question != "D"
+          [ set color yellow - 2 + random 7 ]  ;; random shades look nice
+        setxy random-xcor random-ycor
+        rt random-float 360
+        set flockmates no-turtles ]
+    reset-ticks
+  end
 
-;to-report get-neighbours-alignment
-;  let index-o [who] of (turtles in-radius zo)
-;  report index-o
-;end
-
-;to-report get-neighbours-attraction
-;  let index-a [who] of (turtles in-radius za)
-;  report index-a
-;end
-
-to calc_force
-
-end
-
-to calc_turn
-end
-
-
-to flock  ;; turtle procedure
-  find-flockmates
-  if any? flockmates
-    [ find-nearest-neighbor
-      ifelse distance nearest-neighbor < minimum-separation
-        [ separate ]
-        [ align
-          cohere ] ]
-end
-
-to find-flockmates  ;; turtle procedure
-  set flockmates other turtles in-radius vision
-end
-
-to find-nearest-neighbor ;; turtle procedure
-  set nearest-neighbor min-one-of flockmates [distance myself]
-end
-
-;;; SEPARATE
-
-to separate  ;; turtle procedure
-  turn-away ([heading] of nearest-neighbor) max-separate-turn
-end
-
-;;; ALIGN
-
-to align  ;; turtle procedure
-  turn-towards average-flockmate-heading max-align-turn
-end
-
-to-report average-flockmate-heading  ;; turtle procedure
-  ;; We can't just average the heading variables here.
-  ;; For example, the average of 1 and 359 should be 0,
-  ;; not 180.  So we have to use trigonometry.
-  let x-component sum [dx] of flockmates
-  let y-component sum [dy] of flockmates
-  ifelse x-component = 0 and y-component = 0
-    [ report heading ]
-    [ report atan x-component y-component ]
-end
-
-;;; COHERE
-
-to cohere  ;; turtle procedure
-  turn-towards average-heading-towards-flockmates max-cohere-turn
-end
-
-to-report average-heading-towards-flockmates  ;; turtle procedure
-  ;; "towards myself" gives us the heading from the other turtle
-  ;; to me, but we want the heading from me to the other turtle,
-  ;; so we add 180
-  let x-component mean [sin (towards myself + 180)] of flockmates
-  let y-component mean [cos (towards myself + 180)] of flockmates
-  ifelse x-component = 0 and y-component = 0
-    [ report heading ]
-    [ report atan x-component y-component ]
-end
-
-;;; HELPER PROCEDURES
-
-to turn-towards [new-heading max-turn]  ;; turtle procedure
-  turn-at-most (subtract-headings new-heading heading) max-turn
-end
-
-to turn-away [new-heading max-turn]  ;; turtle procedure
-  turn-at-most (subtract-headings heading new-heading) max-turn
-end
-
-;; turn right by "turn" degrees (or left if "turn" is negative),
-;; but never turn more than "max-turn" degrees
-to turn-at-most [turn max-turn]  ;; turtle procedure
-  ifelse abs turn > max-turn
-    [ ifelse turn > 0
-        [ rt max-turn ]
-        [ lt max-turn ] ]
-    [ rt turn ]
-end
+  to go
+    ; "None"
+    clear-links
+    ask herdanimals [linking]               ; this procedure links all the herdanimals with their flockmates
+    ask links [link-attribute-calculations] ; this procedure calulates the link attributes dx, dy, and happiness
+    ask herdanimals [movement]              ; this procedure results in movement for the herdanimals
+    ask robots [botmove]                    ; this procedure results in movement for the robots
 
 
-; Copyright 1998 Uri Wilensky.
-; See Info tab for full copyright and license.
+    tick
+  end
+
+  to linking
+    if first question = "1" [      ; checks which procedure is used for flocking in this case the "1" means considering all other herdanimals in radius vision
+      find-flockmates-metric
+    ]
+    if first question = "2" [      ; checks which procedure is used for flocking in this case the "2" means considering only the k nearest neighbours in radius vision
+      find-flockmates-knn
+    ]
+    if first question = "3" [      ; checks which procedure is used for flocking in this case the "3" means considering only the k nearest neighbours in radius vision plus one random herdanimal
+      find-flockmates-lr
+    ]
+    get-mates                      ; this procedure links the herdanimals with their flockmates to make calculations easier
+  end
+
+  to link-attribute-calculations
+    calc-dxdy
+    calc-happiness
+    calc-force
+
+  end
+
+
+  to movement
+      ifelse any? flockmates[        ; checks whether there are any flockmates
+      update-heading
+      fd base-speed-herd                    ; will set the repulsion random and attraction mates
+    ][fd base-speed-herd]
+  end
+
+  to find-flockmates-metric   ;; herdanimal procedure
+    set flockmates other herdanimals in-radius vision
+  end
+
+  to find-flockmates-knn  ;; herdanimal procedure
+    set flockmates other herdanimals in-radius vision
+    set flockmates min-n-of knn flockmates [distance myself]
+  end
+
+  to find-flockmates-lr  ;; herdanimal procedure longrange
+    find-flockmates-knn
+    let lr-one one-of other herdanimals who-are-not flockmates
+    set flockmates (turtle-set flockmates lr-one)
+  end
+
+  to find-nearest-neighbors ;; herdanimal procedure
+    set flockmates min-n-of knn flockmates [distance myself]
+  end
+
+  to get-mates
+    set repulsion-mates other flockmates in-radius d0
+    set random-mates other flockmates in-radius d1 who-are-not repulsion-mates
+    set attraction-mates other flockmates who-are-not (turtle-set repulsion-mates random-mates)
+    create-links-to flockmates ;; create directed links to all flockmates
+  end
+
+  to calc-dxdy
+    set d-x link-length * cos link-heading
+    set d-y link-length * sin link-heading
+  end
+
+  to calc-happiness
+    ifelse link-length < (2 * ( d1 - d0 )) [
+      set happiness ( 1 / ( 1 + exp ( -  k0 * ( (link-length)- x0 ))))
+    ][
+      set happiness ( 1 - ( 1 / ( 1 + exp ( -  k1 * ( (link-length) - x1 )))))
+    ]
+  end
+
+  to calc-force
+    ; this procedure calulates the heading (direction) as well as the stepsize of the herdanimal
+    if link-length < d0 [
+      set force-x (d-x * -1) * (1 - happiness)
+      set force-y (d-y * -1) * (1 - happiness)
+    ]
+    if link-length <= d1 and link-length >= d0
+    [
+      set force-x random 0.001 * (1 - happiness)
+      set force-y random 0.001 * (1 - happiness)
+    ]
+    if link-length > d1
+    [
+      set force-x d-x * (1 - happiness)
+      set force-y d-y * (1 - happiness)
+    ]
+  end
+
+  to update-heading
+    set t-force-x (sum [ force-x ] of my-out-links)
+    set t-force-y (sum [ force-y ] of my-out-links)
+    let turn 0
+  ifelse t-force-x = 0 and t-force-y = 0[
+    set turn 0
+  ]
+  [
+    set turn atan t-force-x t-force-y
+  ]
+  set heading heading - turn
+    ; this procedure updates the heading (direction) of the herdanimal
+  end
+
+
+  to botmove
+    ; move that botty
+  end
+
+
+
+
+
+
+
+  ; Copyright 1998 Uri Wilensky.
+  ; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
 250
 10
-755
-516
+1105
+866
 -1
 -1
 7.0
@@ -165,10 +209,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--35
-35
--35
-35
+-60
+60
+-60
+60
 1
 1
 1
@@ -176,10 +220,10 @@ ticks
 30.0
 
 BUTTON
-39
-93
-116
-126
+10
+59
+87
+92
 NIL
 setup
 NIL
@@ -193,11 +237,11 @@ NIL
 1
 
 BUTTON
-122
 93
-203
-126
-NIL
+59
+198
+92
+go
 go
 T
 1
@@ -210,175 +254,138 @@ NIL
 0
 
 SLIDER
-9
-51
-232
-84
+11
+106
+234
+139
 population
 population
-1.0
-1000.0
-11.0
-1.0
+1
+1000
+35.0
+1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-4
-217
-237
-250
-max-align-turn
-max-align-turn
-0.0
-20.0
-5.0
-0.25
-1
-degrees
-HORIZONTAL
-
-SLIDER
-4
-251
-237
-284
-max-cohere-turn
-max-cohere-turn
-0.0
-20.0
-3.0
-0.25
-1
-degrees
-HORIZONTAL
-
-SLIDER
-4
-285
-237
-318
-max-separate-turn
-max-separate-turn
-0.0
-20.0
-1.5
-0.25
-1
-degrees
-HORIZONTAL
-
-SLIDER
-9
-135
-232
-168
+18
+148
+241
+181
 vision
 vision
-0.0
-10.0
-5.0
-0.5
-1
-patches
-HORIZONTAL
-
-SLIDER
-9
-169
-232
-202
-minimum-separation
-minimum-separation
-0.0
-5.0
-0.5
-0.25
-1
-patches
-HORIZONTAL
-
-SLIDER
-7
-337
-179
-370
-zr
-zr
 0
-100
-20.0
+50
+30.0
+0.5
 1
-1
-NIL
+patches
 HORIZONTAL
+
+CHOOSER
+1132
+424
+1639
+469
+question
+question
+"0 None" "1 Are the boids aligned?" "2 Are the boids in separation or cohesion mode?" "3 Do all of the boids end up following the same leader?" "4 Are the boids aligned? Are the boids in separation or cohesion mode?" "5 herders"
+1
 
 SLIDER
 8
-382
-180
-415
-zo
-zo
+376
+236
+409
+step
+step
+0
+1
+0.11
+0.01
+1
+NIL
+HORIZONTAL
+
+TEXTBOX
+12
+8
+251
+55
+You can change the question\nwhile the simulation is running. \n(While the go button is pressed...)
+11
+0.0
+0
+
+TEXTBOX
+10
+347
+247
+375
+reduce the step to better\nobserve the interactions
+11
+0.0
+0
+
+SWITCH
+43
+468
+148
+501
+autozones
+autozones
+0
+1
+-1000
+
+SLIDER
+12
+422
+185
+455
+happyzone-min
+happyzone-min
 0
 100
-30.0
-1
+1.9
+0.1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-9
-432
-181
-465
-za
-za
+48
+533
+221
+566
+happyzone-max
+happyzone-max
 0
 100
-50.0
-1
+7.0
+0.1
 1
 NIL
 HORIZONTAL
 
-BUTTON
-840
-132
-923
-165
-go once
-go
-NIL
-1
-T
-OBSERVER
-NIL
-NIL
-NIL
-NIL
-1
-
 @#$#@#$#@
+## ACKNOWLEDGMENT
+
+This model is an alternate visualization of the Flocking model from the Biology section of the NetLogo Models Library. It uses visualization techniques as recommended in the paper:
+
+* Kornhauser, D., Wilensky, U., & Rand, W. (2009). Design guidelines for agent based model visualization. Journal of Artificial Societies and Social Simulation (JASSS), 12(2), 1. http://ccl.northwestern.edu/papers/2009/Kornhauser,Wilensky&Rand_DesignGuidelinesABMViz.pdf.
+
 ## WHAT IS IT?
 
-This model is an attempt to mimic the flocking of birds.  (The resulting motion also resembles schools of fish.)  The flocks that appear in this model are not created or led in any way by special leader birds.  Rather, each bird is following exactly the same set of rules, from which flocks emerge.
+This model is a version of the NetLogo Flocking model that adds visualizations.
+The Flocking model is an attempt to mimic the flocking of birds.  (The resulting motion also resembles schools of fish.)  The flocks that appear in this model are not created or led in any way by special leader birds.  Rather, each bird (aka boid) is following exactly the same set of rules, from which flocks emerge.
 
-## HOW IT WORKS
-
-The birds follow three rules: "alignment", "separation", and "cohesion".
-
-"Alignment" means that a bird tends to turn so that it is moving in the same direction that nearby birds are moving.
-
-"Separation" means that a bird will turn to avoid another bird which gets too close.
-
-"Cohesion" means that a bird will move towards other nearby birds (unless another bird is too close).
-
-When two birds are too close, the "separation" rule overrides the other two, which are deactivated until the minimum separation is achieved.
+The birds follow three rules: "alignment", "separation", and "cohesion".  "Alignment" means that a bird tends to turn so that it is moving in the same direction that nearby birds are moving.  "Separation" means that a bird will turn to avoid another bird which gets too close.  "Cohesion" means that a bird will move towards other nearby birds (unless another bird is too close).  When two birds are too close, the "separation" rule overrides the other two, which are deactivated until the minimum separation is achieved.
 
 The three rules affect only the bird's heading.  Each bird always moves forward at the same constant speed.
+
+This version creates 4 different visualizations of the model, depending on which question about the model you are trying to answer.
 
 ## HOW TO USE IT
 
@@ -389,6 +396,17 @@ The default settings for the sliders will produce reasonably good flocking behav
 Three TURN-ANGLE sliders control the maximum angle a bird can turn as a result of each rule.
 
 VISION is the distance that each bird can see 360 degrees around it.
+
+STEP is the distance a bird moves at each tick.
+
+VISUALIZATION
+Each visualization is designed to highlight the answers to specific questions.
+QUESTION has 5 values. Each value results in a different visualization that helps answer the corresponding question.
+Value of 0 = "NONE". This gives the same behavior as the standard flocking model.
+Value of 1 = "Are the boids aligned". Boids with the same direction have the same color. Clusters with the same heading can be easily distinguished.
+Value of 2 = "Are the boids in separation or cohesion mode?". This colors the boids red when they are separating and green when they are cohering.
+Value of 3 = "Do all of the boids end up following the same leader?". Each flock gets a different color.
+Value of 4 = "Are the boids aligned? Are the boids in separation or cohesion mode?". Boids with the same direction have the same color. Boids in separation mode have the default shape, Boids in cohesion mode have a "line" shape.
 
 ## THINGS TO NOTICE
 
@@ -424,6 +442,8 @@ What would happen if you gave the birds different velocities?  For example, you 
 
 Are there other interesting ways you can make the birds different from each other?  There could be random variation in the population, or you could have distinct "species" of bird.
 
+Can you add a value to the QUESTION chooser and develop a corresponding visualization that helps answer the question?
+
 ## NETLOGO FEATURES
 
 Notice the need for the `subtract-headings` primitive and special procedure for averaging groups of headings.  Just subtracting the numbers, or averaging the numbers, doesn't give you the results you'd expect, because of the discontinuity where headings wrap back to 0 once they reach 360.
@@ -432,11 +452,14 @@ Notice the need for the `subtract-headings` primitive and special procedure for 
 
 * Moths
 * Flocking Vee Formation
-* Flocking - Alternative Visualizations
 
 ## CREDITS AND REFERENCES
 
 This model is inspired by the Boids simulation invented by Craig Reynolds.  The algorithm we use here is roughly similar to the original Boids algorithm, but it is not the same.  The exact details of the algorithm tend not to matter very much -- as long as you have alignment, separation, and cohesion, you will usually get flocking behavior resembling that produced by Reynolds' original model.  Information on Boids is available at https://web.archive.org/web/20210818090425/http://www.red3d.com/cwr/boids/.
+
+To refer to this model in academic publications, please use:  Wilensky, U. (1998).  NetLogo Flocking model.  http://ccl.northwestern.edu/netlogo/models/Flocking.  Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+
+In other publications, please use:  Copyright 1998 Uri Wilensky.  All rights reserved.  See http://ccl.northwestern.edu/netlogo/models/Flocking for terms of use.
 
 ## HOW TO CITE
 
@@ -444,7 +467,7 @@ If you mention this model or the NetLogo software in a publication, we ask that 
 
 For the model itself:
 
-* Wilensky, U. (1998).  NetLogo Flocking model.  http://ccl.northwestern.edu/netlogo/models/Flocking.  Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
+* Wilensky, U. (1998).  NetLogo Flocking - Alternative Visualizations model.  http://ccl.northwestern.edu/netlogo/models/Flocking-AlternativeVisualizations.  Center for Connected Learning and Computer-Based Modeling, Northwestern University, Evanston, IL.
 
 Please cite the NetLogo software as:
 
@@ -460,11 +483,9 @@ This work is licensed under the Creative Commons Attribution-NonCommercial-Share
 
 Commercial licenses are also available. To inquire about commercial licenses, please contact Uri Wilensky at uri@northwestern.edu.
 
-This model was created as part of the project: CONNECTED MATHEMATICS: MAKING SENSE OF COMPLEX PHENOMENA THROUGH BUILDING OBJECT-BASED PARALLEL MODELS (OBPML).  The project gratefully acknowledges the support of the National Science Foundation (Applications of Advanced Technologies Program) -- grant numbers RED #9552950 and REC #9632612.
+This model was created as part of the projects: PARTICIPATORY SIMULATIONS: NETWORK-BASED DESIGN FOR SYSTEMS LEARNING IN CLASSROOMS and/or INTEGRATED SIMULATION AND MODELING ENVIRONMENT. The project gratefully acknowledges the support of the National Science Foundation (REPP & ROLE programs) -- grant numbers REC #9814682 and REC-0126227.
 
-This model was converted to NetLogo as part of the projects: PARTICIPATORY SIMULATIONS: NETWORK-BASED DESIGN FOR SYSTEMS LEARNING IN CLASSROOMS and/or INTEGRATED SIMULATION AND MODELING ENVIRONMENT. The project gratefully acknowledges the support of the National Science Foundation (REPP & ROLE programs) -- grant numbers REC #9814682 and REC-0126227. Converted from StarLogoT to NetLogo, 2002.
-
-<!-- 1998 2002 -->
+<!-- 1998 -->
 @#$#@#$#@
 default
 true
@@ -626,11 +647,25 @@ line
 true
 0
 Line -7500403 true 150 0 150 300
+Line -7500403 true 150 0 150 75
+Rectangle -7500403 true true 150 0 150 60
+Rectangle -7500403 true true 135 15 135 75
 
 line half
 true
 0
 Line -7500403 true 150 0 150 150
+
+link
+true
+0
+Line -7500403 true 150 0 150 300
+
+link direction
+true
+0
+Line -7500403 true 150 150 30 225
+Line -7500403 true 150 150 270 225
 
 pentagon
 false
