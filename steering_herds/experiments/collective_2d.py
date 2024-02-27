@@ -66,7 +66,6 @@ def run_simulation(n_school,
             d_theta = np.arctan2(force[1], force[0]) % (2 * np.pi)
             # necessary turn
             turn = current_school_poses[i, 2] - d_theta
-            print("turn", turn)
             # converted to [-π, π]
             turn = (turn + np.pi) % (2 * np.pi) - np.pi
             # rotating duration (limited)

@@ -1,241 +1,297 @@
 globals [
-    cohesion-flag
-    normal-flag
-    base-speed-herd
-    base-speed-bot
-    repulsion-bot
-    d0  ; happy-zone-min
-    d1  ; happy-zone-max
-    k0  ; steepness
-    k1  ; steepness
-    x0  ; halfwaypoint
-    x1  ; halfwaypoint
-    knn ; k nearest neighbor
-  ]
-  breed [ herdanimals herdanimal ]
-  breed [ robots robot ]
+  base-speed-herd
+  base-speed-bot
+  repulsion-bot
+  max-turn; max turning  per tick
+  d0  ; happy-zone-min
+  d1  ; happy-zone-max
+  k0  ; steepness
+  k1  ; steepness
+  x0  ; halfwaypoint
+  x1  ; halfwaypoint
+  knn ; k nearest neighbor
+  entity-width
+  dt ; time step size
+  w-s-max; maximum turning
+]
+breed [ herdanimals herdanimal ]
+breed [ robots robot ]
 
-  herdanimals-own [
-    flockmates
-    repulsion-mates
-    random-mates
-    attraction-mates
-    t-force-x
-    t-force-y
-    real-herdanimal-heading
-  ]
+herdanimals-own [
+  flockmates
+  random-mates
+  t-force-x
+  t-force-y
+  t-force
+  t-force-direction
+  turn
+  real-herdanimal-heading
+  speed
+]
 
-  links-own [
-    d-x
-    d-y
-    happiness ;; happiness of the animal based on closeness of others and repulsiveness of robot
-    force-x
-    force-y
-    real-link-heading
-  ]
+links-own [
+  d-x ; distance-x between two agents
+  d-y ; distance-y between two agents
+  vector-factor ;; happiness of the animal based on closeness of others and repulsiveness of robot
+  force-x
+  force-y
+  real-link-heading
+]
 
-  robots-own [
-    repulsion
-    real-robot-heading
-  ]
+robots-own [
+  repulsion
+  real-robot-heading
+  visibles                    ; list of all herdanimals that are in unobstructed vision
+  LCM                         ; location of the centre of mass calculated from all the visible herdanimals
+]
 
-  to setup
-    clear-all
-    random-seed 73 ;;  it is the best number
-    set base-speed-herd 0.1
-    set-default-shape herdanimals "cow"
-    set-default-shape robots   "target"
-    ifelse autozones [
+to setup
+  clear-all
+  random-seed 73 ;;  it is the best number
+set base-speed-herd 0.1
+  set dt 1
+  set w-s-max 60
+  set-default-shape herdanimals "cow"
+  set-default-shape robots   "target"
+  set entity-width 1
+  ifelse autozones [
     set d0 happyzone-min
     set d1 happyzone-max
-
   ][
-      set d0 10
-      set d1 30
+    set d0 10
+    set d1 30
+  ]
+  set x0 ( d0 / 2 )
+  set x1 ( d1 * 2 )
+  set k0 ( 5 / x0 )
+  set k1 ( 10 / x1 )
+  set knn 5
+  create-robots 1 [
+    set heading 0
+    set color blue
+    setxy 0 0 ]
+  create-herdanimals population
+  [ set size 1.5
+    if first question != "D"
+      [ set color yellow - 2 + random 7 ]  ;; random shades look nice
+    setxy random-xcor random-ycor
+    rt random-float 360
+    set flockmates no-turtles ]
+  reset-ticks
+end
+
+to go
+  ; "None"
+  clear-links
+  ask herdanimals [set color yellow]
+  ask robots [list-visibles]              ; this procedure results in a list of herdanimals visible to the robots
+  ask herdanimals [linking]               ; this procedure links all the herdanimals with their flockmates
+  update-real-heading                     ; this procedure converts the inherent headings of all agents to usefull headings,, old headings: NESW 0,90,180,270 -> new headings: NESW
+  ask links [link-attribute-calculations] ; this procedure calulates the link attributes dx, dy, and happiness
+  ask herdanimals [movement]              ; this procedure results in movement for the herdanimals
+  ask robots [botmove]                    ; this procedure results in movement for the robots
+  tick
+end
+
+
+to list-visibles
+
+  if not any? other turtles-here [
+    set visibles no-turtles
+    foreach [self] of herdanimals [ animal ->
+      let ll2 ((distance animal) ^ 2)
+      let a2 ((entity-width) ^ 2)
+      set heading towards animal
+      if not any? (herdanimals who-are-not animal) in-cone (distance animal) (acos(( ll2 - a2 )/ ll2 )) [
+        set visibles (turtle-set visibles animal)
+      ]
     ]
-    set x0 ( d0 / 2 )
-    set x1 ( d1 * 2 )
-    set k0 ( 5 / x0 )
-    set k1 ( 10 / x1 )
-    set cohesion-flag true
-    set normal-flag true
-    set knn 5
-    create-herdanimals population
-      [ set size 1.5
-        if first question != "D"
-          [ set color yellow - 2 + random 7 ]  ;; random shades look nice
-        setxy random-xcor random-ycor
-        rt random-float 360
-        set flockmates no-turtles ]
-    reset-ticks
-  end
-
-  to go
-    ; "None"
-    clear-links
-    ask herdanimals [linking]               ; this procedure links all the herdanimals with their flockmates
-    update-real-heading                     ; this procedure converts the inherent headings of all agents to usefull headings,, old headings: NESW 0,90,180,270 -> new headings: NESW 
-    ask links [link-attribute-calculations] ; this procedure calulates the link attributes dx, dy, and happiness
-    ask herdanimals [movement]              ; this procedure results in movement for the herdanimals
-    ask robots [botmove]                    ; this procedure results in movement for the robots
-
-
-    tick
-  end
-
-  to linking
-    if first question = "1" [      ; checks which procedure is used for flocking in this case the "1" means considering all other herdanimals in radius vision
-      find-flockmates-metric
+    if any? visibles [
+      let LCMx mean [xcor] of visibles
+      let LCMy mean [ycor] of visibles
+      set LCM list LCMx LCMy
     ]
-    if first question = "2" [      ; checks which procedure is used for flocking in this case the "2" means considering only the k nearest neighbours in radius vision
-      find-flockmates-knn
-    ]
-    if first question = "3" [      ; checks which procedure is used for flocking in this case the "3" means considering only the k nearest neighbours in radius vision plus one random herdanimal
-      find-flockmates-lr
-    ]
-    get-mates                      ; this procedure links the herdanimals with their flockmates to make calculations easier
-  end
 
-  to update-real-heading
-    ask links [update-real-heading-l]
-    ask robots [update-real-heading-r]
-    ask herdanimals [update-real-heading-h] 
-  end
-
-  to update-real-heading-l
-    set real-link-heading ( - link-heading + 90)
-  end  
-
-  to update-real-heading-r
-    set real-robot-heading ( - heading + 90)
-  end  
-   
-  to update-real-heading-h
-    set real-herdanimal-heading ( - heading + 90)
-  end  
-
-  to link-attribute-calculations
-    calc-dxdy
-    calc-happiness
-    calc-force
-  end
+  ]
+  ask visibles [set color green]
+end
 
 
-  to movement
-      ifelse any? flockmates[        ; checks whether there are any flockmates
-      update-heading
-      fd base-speed-herd                    ; will set the repulsion random and attraction mates
-    ][fd base-speed-herd]
-  end
-
-  to find-flockmates-metric   ;; herdanimal procedure
-    set flockmates other herdanimals in-radius vision
-  end
-
-  to find-flockmates-knn  ;; herdanimal procedure
-    set flockmates other herdanimals in-radius vision
-    set flockmates min-n-of knn flockmates [distance myself]
-  end
-
-  to find-flockmates-lr  ;; herdanimal procedure longrange
+to linking
+  if first question = "1" [      ; checks which procedure is used for flocking in this case the "1" means considering all other herdanimals in radius vision
+    find-flockmates-metric
+  ]
+  if first question = "2" [      ; checks which procedure is used for flocking in this case the "2" means considering only the k nearest neighbours in radius vision
     find-flockmates-knn
-    let lr-one one-of other herdanimals who-are-not flockmates
-    set flockmates (turtle-set flockmates lr-one)
-  end
+  ]
+  if first question = "3" [      ; checks which procedure is used for flocking in this case the "3" means considering only the k nearest neighbours in radius vision plus one random herdanimal
+    find-flockmates-lr
+  ]
+  create-links-to flockmates                      ; this procedure links the herdanimals with their flockmates to make calculations easier
+end
 
-  to find-nearest-neighbors ;; herdanimal procedure
-    set flockmates min-n-of knn flockmates [distance myself]
-  end
+to update-real-heading
+  ask links [update-real-heading-l]
+  ask robots [update-real-heading-r]
+  ask herdanimals [update-real-heading-h]
+end
 
-  to get-mates
-    set repulsion-mates other flockmates in-radius d0
-    set random-mates other flockmates in-radius d1 who-are-not repulsion-mates
-    set attraction-mates other flockmates who-are-not (turtle-set repulsion-mates random-mates)
-    create-links-to flockmates ;; create directed links to all flockmates
-  end
+to update-real-heading-l
+  set real-link-heading ( - link-heading + 90)
+  ;; convert to [-pi,pi]
+  set real-link-heading (real-link-heading + 180) mod 360 - 180
+end
 
-  to calc-dxdy
-    set d-x link-length * cos real-link-heading
-    set d-y link-length * sin real-link-heading
-  end
+to update-real-heading-r
+  set real-robot-heading ( - heading + 90)
+  ;; convert to [-pi,pi]
+  set real-robot-heading (real-robot-heading + 180) mod 360 - 180
+end
 
-  to calc-happiness
-    ifelse link-length < (2 * ( d1 - d0 )) [
-      set happiness ( 1 / ( 1 + exp ( -  k0 * ( (link-length)- x0 ))))
-    ][
-      set happiness ( 1 - ( 1 / ( 1 + exp ( -  k1 * ( (link-length) - x1 )))))
-    ]
-  end
+to update-real-heading-h
+  set real-herdanimal-heading ( - heading + 90)
+  ;; convert to [-pi,pi]
+  set real-herdanimal-heading (real-herdanimal-heading + 180) mod 360 - 180
+end
 
-  to calc-force
-    ; this procedure calulates the heading (direction) as well as the stepsize of the herdanimal
-    if link-length < d0 [
-      set force-x (d-x * -1) * (1 - happiness) * repulsion-weight
-      set force-y (d-y * -1) * (1 - happiness) * repulsion-weight
-      print 111111
-    ]
-    if link-length <= d1 and link-length >= d0
-    [
-    set force-x (cos (sum [real-herdanimal-heading] of both-ends) / 2 ) * alignment-weight 
-    set force-y (sin (sum [real-herdanimal-heading] of both-ends) / 2 ) * alignment-weight
-;        set force-x (cos (sum [heading] of both-ends) * (1 - happiness)) * alignment-weight
-;    set force-y (sin (sum [heading] of both-ends) * (1 - happiness)) * alignment-weight
-;      set force-x random 0.001 * (1 - happiness)
-;      set force-y random 0.001 * (1 - happiness)
-    ]
-    if link-length > d1
-    [
-;      set force-x d-x * (1 - happiness) * attraction-weight
-;      set force-y d-y * (1 - happiness) * attraction-weight
-      set force-x d-x  * attraction-weight * happiness
-      set force-y d-y  * attraction-weight * happiness
-      print 333
-    ]
-  end
+to link-attribute-calculations
+  calc-dxdy
+  factor-calc
+  calc-force
+end
 
-  to update-heading
-    set t-force-x (sum [ force-x ] of my-out-links)
-    set t-force-y (sum [ force-y ] of my-out-links)
-    let turn 0
-    let max-turn 2
+to movement
+  ifelse any? flockmates[        ; checks whether there are any flockmates
+    update-heading
+    fd speed                    ; will set the repulsion random and attraction mates
+  ][fd base-speed-herd]
+end
+
+to find-flockmates-metric   ;; herdanimal procedure
+  set flockmates other herdanimals in-radius vision
+end
+
+to find-flockmates-knn  ;; herdanimal procedure
+  set flockmates other herdanimals in-radius vision
+  let num-flockmates count flockmates
+  let nn 1
+  ifelse num-flockmates > 0 and num-flockmates < 5 [
+  set nn num-flockmates
+  ]
+  [
+  set nn knn
+  ]
+  set flockmates min-n-of nn flockmates [distance myself]
+end
+
+to find-flockmates-lr  ;; herdanimal procedure longrange
+  find-flockmates-knn
+  let lr-one one-of other herdanimals who-are-not flockmates
+  set flockmates (turtle-set flockmates lr-one)
+end
+
+to find-nearest-neighbors ;; herdanimal procedure
+  set flockmates min-n-of knn flockmates [distance myself]
+end
+
+to calc-dxdy
+  set d-x link-length * cos real-link-heading
+  set d-y link-length * sin real-link-heading
+end
+
+to factor-calc
+  ifelse link-length < d0 [
+    set vector-factor (( 1 / ( 1 + exp ( -  k1 * ( (link-length) - x1 )))) - 1 )
+  ][
+    set vector-factor ( 1 / ( 1 + exp ( -  k0 * ( (link-length)- x0 ))))
+  ]
+end
+
+to calc-force
+  ; this procedure calulates the heading (direction) as well as the stepsize of the herdanimal
+  ifelse link-length < d0 [
+     set force-x (d-x ) * vector-factor * repulsion-weight
+     set force-y (d-y ) * vector-factor * repulsion-weight
+    set color red
+  ][
+    let alignment-force-x ((cos (sum [real-herdanimal-heading] of both-ends) / 2 ) * alignment-weight *(1 - vector-factor))
+    let alignment-force-y ((sin (sum [real-herdanimal-heading] of both-ends) / 2 ) * alignment-weight *(1 - vector-factor))
+    let attraction-force-x (d-x  * attraction-weight * vector-factor)
+    let attraction-force-y (d-y  * attraction-weight * vector-factor)
+    set force-x (alignment-force-x + attraction-force-x)
+    set force-y (alignment-force-y + attraction-force-y)
+    set color green
+  ]
+end
+
+to update-heading
+  set t-force-x (sum [ force-x ] of my-out-links)
+  set t-force-y (sum [ force-y ] of my-out-links)
+  set t-force sqrt (t-force-x * t-force-x + t-force-y * t-force-y)
   ifelse t-force-x = 0 and t-force-y = 0[
     set turn 0
   ]
   [
-    ifelse  ( atan t-force-x t-force-y ) < max-turn [
-      set turn atan t-force-x t-force-y
-    ][
-      set turn max-turn
+    ;; make sure that the angle in Netlogo geometry is converted to normal geometry
+    let arctan-normal (-(atan t-force-x t-force-y) + 90)
+    ;;  converted to [-π, π]
+    set t-force-direction (arctan-normal + 180) mod 360 - 180
+    ;;rotating duration (limited)
+    set turn (real-herdanimal-heading - t-force-direction)
+    let dt-w min (list (abs(turn) / w-s-max) dt)
+    let turn-sign 1
+    if turn < 0 [
+    set turn-sign -1
     ]
+    set turn (turn-sign * w-s-max * dt-w)
+    set heading heading + turn + random 0.01
+    ; scale speed
+    let speed-factor t-force / 100
+    if speed-factor > 1[
+    set speed-factor 1
+    ]
+    set speed base-speed-herd * speed-factor
   ]
-  print 1
-  print turn
-  set heading heading - turn
-    ; this procedure updates the heading (direction) of the herdanimal
-  end
+  ; this procedure updates the heading (direction) of the herdanimal
+end
 
 
-  to botmove
-    ; move that botty
-  end
+to botmove
+  ; move that botty
+  fd base-speed-bot
+end
 
+to move-up
+  ask robots [ set heading 0
+  fd 1]
+end
 
-  ; Copyright 1998 Uri Wilensky.
-  ; See Info tab for full copyright and license.
+to move-right
+  ask robots [ set heading 90
+    fd 1]
 
+end
 
+to move-down
+  ask robots [ set heading 180
+  fd 1]
+end
 
+to move-left
+  ask robots [ set heading 270
+  fd 1]
 
+end
 
 
   ; Copyright 1998 Uri Wilensky.
   ; See Info tab for full copyright and license.
 @#$#@#$#@
 GRAPHICS-WINDOW
-250
+272
 10
-1105
-866
+847
+586
 -1
 -1
 7.0
@@ -248,10 +304,10 @@ GRAPHICS-WINDOW
 1
 1
 1
--60
-60
--60
-60
+-40
+40
+-40
+40
 1
 1
 1
@@ -300,8 +356,8 @@ SLIDER
 population
 population
 1
-1000
-59.0
+50
+32.0
 1
 1
 NIL
@@ -316,7 +372,7 @@ vision
 vision
 0
 50
-20.5
+30.0
 0.5
 1
 patches
@@ -329,23 +385,8 @@ CHOOSER
 418
 question
 question
-"0 None" "1 Are the boids aligned?" "2 Are the boids in separation or cohesion mode?" "3 Do all of the boids end up following the same leader?" "4 Are the boids aligned? Are the boids in separation or cohesion mode?" "5 herders"
+"0 None" "1 Metric neighbor" "2 Topological neighbor" "3 Long-range neighbor"
 1
-
-SLIDER
-14
-193
-242
-226
-step
-step
-0
-1
-0.11
-0.01
-1
-NIL
-HORIZONTAL
 
 TEXTBOX
 12
@@ -387,7 +428,7 @@ happyzone-min
 happyzone-min
 0
 100
-2.5
+2.0
 0.1
 1
 NIL
@@ -402,7 +443,7 @@ happyzone-max
 happyzone-max
 0
 100
-10.1
+15.0
 0.1
 1
 NIL
@@ -416,8 +457,8 @@ SLIDER
 repulsion-weight
 repulsion-weight
 0
-1
-0.0
+100
+100.0
 0.01
 1
 NIL
@@ -431,8 +472,8 @@ SLIDER
 alignment-weight
 alignment-weight
 0
-1
-1.0
+50
+50.0
 0.01
 1
 NIL
@@ -447,11 +488,96 @@ attraction-weight
 attraction-weight
 0
 1
-0.0
+1.0
 0.01
 1
 NIL
 HORIZONTAL
+
+BUTTON
+185
+10
+263
+44
+go-once
+go
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+934
+147
+997
+180
+up
+move-up
+NIL
+1
+T
+OBSERVER
+NIL
+W
+NIL
+NIL
+1
+
+BUTTON
+933
+185
+996
+218
+down
+move-down
+NIL
+1
+T
+OBSERVER
+NIL
+S
+NIL
+NIL
+1
+
+BUTTON
+866
+184
+929
+217
+left
+move-left
+NIL
+1
+T
+OBSERVER
+NIL
+A
+NIL
+NIL
+1
+
+BUTTON
+999
+186
+1062
+219
+right
+move-right
+NIL
+1
+T
+OBSERVER
+NIL
+D
+NIL
+NIL
+1
 
 @#$#@#$#@
 ## ACKNOWLEDGMENT

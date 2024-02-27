@@ -31,7 +31,7 @@ python -m experiments.collective_movement --n_seeds="10" --t_max="3000"
 ```
 
 varying `zoo_s` and `zoa_s` each over `[10, 20, ..., 100]`,\
-for the following different models:
+for the following different models: 
 
 * `model_s="METRIC"`
 * `model_s="TOPOLOGICAL"` with `knn_s=50`
