@@ -1,6 +1,6 @@
 globals [
   base-speed-herd
-  base-speed-bot
+  max-speed-bot
   repulsion-bot
   max-turn; max turning  per tick
   d0  ; happy-zone-min
@@ -13,12 +13,19 @@ globals [
   entity-width
   dt ; time step size
   w-s-max; maximum turning
+  furthest-allowed
+  min-distance-to-herd
+  target-x
+  target-y
+  farmers-vision
 ]
 breed [ herdanimals herdanimal ]
 breed [ robots robot ]
+breed [ farmers farmer]
 
 herdanimals-own [
   flockmates
+  robotmates ;; mates for animal-robot interaction
   random-mates
   t-force-x
   t-force-y
@@ -27,6 +34,12 @@ herdanimals-own [
   turn
   real-herdanimal-heading
   speed
+  dLCM
+  dTarget
+]
+
+farmers-own[
+
 ]
 
 links-own [
@@ -40,20 +53,51 @@ links-own [
 
 robots-own [
   repulsion
+  botspeed
   real-robot-heading
   visibles                    ; list of all herdanimals that are in unobstructed vision
-  LCM                         ; location of the centre of mass calculated from all the visible herdanimals
+  furthest-visible
+  LCMy
+  LCMx                        ; location of the centre of mass calculated from all the visible herdanimals
 ]
+
+;; Use a seed created by the NEW-SEED reporter
+to use-new-seed
+  let my-seed new-seed            ;; generate a new seed
+  output-print word "Generated seed: " my-seed  ;; print it out
+  random-seed my-seed             ;; use the new seed
+  reset-ticks
+end
+
+;; Use a seed entered by the user
+to use-seed-from-user
+  loop [
+    let my-seed user-input "Enter a random seed (an integer):"
+    carefully [ set my-seed read-from-string my-seed ] [ ]
+    ifelse is-number? my-seed and round my-seed = my-seed [
+      random-seed my-seed ;; use the new seed
+      output-print word "User-entered seed: " my-seed  ;; print it out
+      reset-ticks
+      stop
+    ] [
+      user-message "Please enter an integer."
+    ]
+  ]
+end
 
 to setup
   clear-all
-  random-seed 73 ;;  it is the best number
-set base-speed-herd 0.1
+  set base-speed-herd 0.1
   set dt 1
-  set w-s-max 60
+  set w-s-max 360
   set-default-shape herdanimals "cow"
   set-default-shape robots   "target"
+  set-default-shape farmers "person farmer"
   set entity-width 1
+  set robot-repulsion 10
+  set max-speed-bot 2
+  set target-x (- max-pxcor / 2 )
+  set target-y (- max-pycor / 2)
   ifelse autozones [
     set d0 happyzone-min
     set d1 happyzone-max
@@ -66,17 +110,30 @@ set base-speed-herd 0.1
   set k0 ( 5 / x0 )
   set k1 ( 10 / x1 )
   set knn 5
+  set furthest-allowed (3 * x1)
+  set min-distance-to-herd (3 * d0)
   create-robots 1 [
     set heading 0
     set color blue
-    setxy 0 0 ]
+    setxy (- max-pxcor / 2) (max-pycor / 2) ]
+  create-robots 1 [
+    set heading 0
+    set color blue
+    setxy ( max-pxcor / 2) (- max-pycor / 2) ]
   create-herdanimals population
   [ set size 1.5
     if first question != "D"
       [ set color yellow - 2 + random 7 ]  ;; random shades look nice
-    setxy random-xcor random-ycor
+    setxy random max-pxcor random max-pycor
     rt random-float 360
     set flockmates no-turtles ]
+  ask patch target-x target-y [set pcolor orange]
+  create-farmers 1
+  [
+  setxy target-x target-y
+  set size 4
+  ]
+
   reset-ticks
 end
 
@@ -86,38 +143,51 @@ to go
   ask herdanimals [set color yellow]
   ask robots [list-visibles]              ; this procedure results in a list of herdanimals visible to the robots
   ask herdanimals [linking]               ; this procedure links all the herdanimals with their flockmates
+  ask herdanimals [set dTarget (distancexy target-x target-y)]
   update-real-heading                     ; this procedure converts the inherent headings of all agents to usefull headings,, old headings: NESW 0,90,180,270 -> new headings: NESW
   ask links [link-attribute-calculations] ; this procedure calulates the link attributes dx, dy, and happiness
   ask herdanimals [movement]              ; this procedure results in movement for the herdanimals
-  ask robots [botmove]                    ; this procedure results in movement for the robots
+  if auto-shepherd
+  [
+   ask robots [botmove] ; this procedure results in movement for the robots
+   ask farmers [die-on-target]
+  ]
   tick
 end
 
-
 to list-visibles
-
-  if not any? other turtles-here [
-    set visibles no-turtles
-    foreach [self] of herdanimals [ animal ->
-      let ll2 ((distance animal) ^ 2)
-      let a2 ((entity-width) ^ 2)
+  set visibles no-turtles
+  foreach [self] of herdanimals [ animal ->
+    let ll2 ((distance animal) ^ 2)
+    let a2 ((entity-width) ^ 2)
+    let arccos (( ll2 - a2 ) / ll2 )
+    ifelse arccos < -1 or arccos > 1  [
+      set visibles (turtle-set visibles animal)
+    ][
       set heading towards animal
-      if not any? (herdanimals who-are-not animal) in-cone (distance animal) (acos(( ll2 - a2 )/ ll2 )) [
+      if not any? (herdanimals who-are-not animal) in-cone (distance animal) (acos(arccos)) [
         set visibles (turtle-set visibles animal)
       ]
     ]
-    if any? visibles [
-      let LCMx mean [xcor] of visibles
-      let LCMy mean [ycor] of visibles
-      set LCM list LCMx LCMy
-    ]
-
   ]
-  ask visibles [set color green]
+  if any? visibles [
+    set LCMx mean [xcor] of visibles
+    set LCMy mean [ycor] of visibles
+  ]
+  let cmx LCMx
+  let cmy LCMy
+  ask visibles [set color blue]
+  ask visibles [set dLCM (distancexy cmx cmy)]
+  set furthest-visible (max-one-of visibles [dLCM])
+;  ask patch cmx cmy [set pcolor red]
 end
 
-
 to linking
+  ;; get robotmates
+  set robotmates other robots in-radius robot-repulsion
+  create-links-to robotmates
+  if not any? robotmates[
+     ;; get flockmates
   if first question = "1" [      ; checks which procedure is used for flocking in this case the "1" means considering all other herdanimals in radius vision
     find-flockmates-metric
   ]
@@ -128,6 +198,7 @@ to linking
     find-flockmates-lr
   ]
   create-links-to flockmates                      ; this procedure links the herdanimals with their flockmates to make calculations easier
+  ]
 end
 
 to update-real-heading
@@ -137,9 +208,11 @@ to update-real-heading
 end
 
 to update-real-heading-l
+  if link-length != 0[
   set real-link-heading ( - link-heading + 90)
   ;; convert to [-pi,pi]
   set real-link-heading (real-link-heading + 180) mod 360 - 180
+  ]
 end
 
 to update-real-heading-r
@@ -161,8 +234,8 @@ to link-attribute-calculations
 end
 
 to movement
+  update-heading
   ifelse any? flockmates[        ; checks whether there are any flockmates
-    update-heading
     fd speed                    ; will set the repulsion random and attraction mates
   ][fd base-speed-herd]
 end
@@ -175,7 +248,7 @@ to find-flockmates-knn  ;; herdanimal procedure
   set flockmates other herdanimals in-radius vision
   let num-flockmates count flockmates
   let nn 1
-  ifelse num-flockmates > 0 and num-flockmates < 5 [
+  ifelse num-flockmates >= 0 and num-flockmates < 5 [
   set nn num-flockmates
   ]
   [
@@ -209,11 +282,8 @@ end
 
 to calc-force
   ; this procedure calulates the heading (direction) as well as the stepsize of the herdanimal
-  ifelse link-length < d0 [
-     set force-x (d-x ) * vector-factor * repulsion-weight
-     set force-y (d-y ) * vector-factor * repulsion-weight
-    set color red
-  ][
+  ifelse ([breed] of end1 = herdanimals) and ([breed] of end2 = herdanimals) [
+    ifelse (link-length >= d0)[
     let alignment-force-x ((cos (sum [real-herdanimal-heading] of both-ends) / 2 ) * alignment-weight *(1 - vector-factor))
     let alignment-force-y ((sin (sum [real-herdanimal-heading] of both-ends) / 2 ) * alignment-weight *(1 - vector-factor))
     let attraction-force-x (d-x  * attraction-weight * vector-factor)
@@ -221,12 +291,22 @@ to calc-force
     set force-x (alignment-force-x + attraction-force-x)
     set force-y (alignment-force-y + attraction-force-y)
     set color green
+  ][
+     set force-x (d-x) * vector-factor * repulsion-weight
+     set force-y (d-y) * vector-factor * repulsion-weight
+     set color red
+  ]
+  ]
+  [
+     set force-x (- d-x)  * repulsion-weight
+     set force-y (- d-y)  * repulsion-weight
+     set color red
   ]
 end
 
 to update-heading
-  set t-force-x (sum [ force-x ] of my-out-links)
-  set t-force-y (sum [ force-y ] of my-out-links)
+  set t-force-x (sum [ force-x ] of my-out-links )
+  set t-force-y (sum [ force-y ] of my-out-links )
   set t-force sqrt (t-force-x * t-force-x + t-force-y * t-force-y)
   ifelse t-force-x = 0 and t-force-y = 0[
     set turn 0
@@ -244,7 +324,7 @@ to update-heading
     set turn-sign -1
     ]
     set turn (turn-sign * w-s-max * dt-w)
-    set heading heading + turn + random 0.01
+    set heading heading + turn
     ; scale speed
     let speed-factor t-force / 100
     if speed-factor > 1[
@@ -252,13 +332,39 @@ to update-heading
     ]
     set speed base-speed-herd * speed-factor
   ]
+  set heading (heading - 5 + random 10) ; to add randomness of movement
   ; this procedure updates the heading (direction) of the herdanimal
 end
 
 
 to botmove
   ; move that botty
-  fd base-speed-bot
+  let closest-ha (min-one-of visibles [distance myself])
+  ifelse (distance closest-ha) < min-distance-to-herd [
+
+    set botspeed 0
+  ][
+    set botspeed 1
+  ]
+  ifelse [dLCM] of furthest-visible > furthest-allowed [
+    let x-comp ([xcor] of furthest-visible - LCMx)
+    let y-comp ([ycor] of furthest-visible - LCMy)
+    let c-comp ([dLCM] of furthest-visible)
+    let ratio ((c-comp + min-distance-to-herd) / c-comp)
+    set x-comp (x-comp * ratio)
+    set y-comp (y-comp * ratio)
+    set heading towardsxy (LCMx + x-comp) (LCMy + y-comp)
+  ][
+    let furthest-from-target (max-one-of visibles [distancexy target-x target-y])
+    let x-comp ([xcor] of furthest-from-target - target-x)
+    let y-comp ([ycor] of furthest-from-target - target-y)
+    let dist ([dTarget] of furthest-from-target)
+    let ratio ((dist + min-distance-to-herd) / dist)
+    set x-comp (x-comp * ratio)
+    set y-comp (y-comp * ratio)
+    set heading towardsxy (target-x + x-comp) (target-y + y-comp)
+  ]
+  fd max-speed-bot * botspeed
 end
 
 to move-up
@@ -282,6 +388,12 @@ to move-left
   fd 1]
 
 end
+
+to die-on-target
+  if  any? herdanimals in-radius 4[
+    ask herdanimals in-radius 4 [die]
+  ]
+  end
 
 
   ; Copyright 1998 Uri Wilensky.
@@ -357,17 +469,17 @@ population
 population
 1
 50
-32.0
+50.0
 1
 1
 NIL
 HORIZONTAL
 
 SLIDER
-18
-148
-241
-181
+11
+143
+234
+176
 vision
 vision
 0
@@ -379,10 +491,10 @@ patches
 HORIZONTAL
 
 CHOOSER
-12
-373
-252
-418
+10
+296
+250
+341
 question
 question
 "0 None" "1 Metric neighbor" "2 Topological neighbor" "3 Long-range neighbor"
@@ -398,21 +510,11 @@ You can change the question\nwhile the simulation is running. \n(While the go bu
 0.0
 0
 
-TEXTBOX
-14
-445
-251
-473
-reduce the step to better\nobserve the interactions
-11
-0.0
-0
-
 SWITCH
-15
-238
-120
-271
+11
+179
+116
+212
 autozones
 autozones
 0
@@ -420,10 +522,10 @@ autozones
 -1000
 
 SLIDER
-14
-326
-187
-359
+11
+256
+184
+289
 happyzone-min
 happyzone-min
 0
@@ -435,10 +537,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-15
-282
-188
-315
+11
+217
+184
+250
 happyzone-max
 happyzone-max
 0
@@ -450,10 +552,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-17
-485
-189
-518
+10
+344
+182
+377
 repulsion-weight
 repulsion-weight
 0
@@ -465,10 +567,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-18
-525
-190
-558
+10
+380
+182
+413
 alignment-weight
 alignment-weight
 0
@@ -480,10 +582,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-19
-564
-191
-597
+10
+417
+182
+450
 attraction-weight
 attraction-weight
 0
@@ -506,7 +608,7 @@ NIL
 T
 OBSERVER
 NIL
-NIL
+Q
 NIL
 NIL
 1
@@ -578,6 +680,96 @@ D
 NIL
 NIL
 1
+
+SLIDER
+12
+455
+184
+488
+robot-repulsion
+robot-repulsion
+0
+20
+10.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+11
+493
+183
+526
+Randomness
+Randomness
+0
+10
+10.0
+0.1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+865
+105
+1001
+138
+auto-shepherd
+auto-shepherd
+0
+1
+-1000
+
+BUTTON
+866
+235
+977
+268
+use-new-seed
+use-new-seed
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+BUTTON
+867
+277
+1010
+310
+use-seed-from-user
+use-seed-from-user
+NIL
+1
+T
+OBSERVER
+NIL
+NIL
+NIL
+NIL
+1
+
+SLIDER
+864
+318
+1037
+352
+farmer-vision
+farmer-vision
+0
+10
+5.0
+1
+1
+NIL
+HORIZONTAL
 
 @#$#@#$#@
 ## ACKNOWLEDGMENT
@@ -890,6 +1082,21 @@ Polygon -7500403 true true 105 90 120 195 90 285 105 300 135 300 150 225 165 300
 Rectangle -7500403 true true 127 79 172 94
 Polygon -7500403 true true 195 90 240 150 225 180 165 105
 Polygon -7500403 true true 105 90 60 150 75 180 135 105
+
+person farmer
+false
+0
+Polygon -7500403 true true 105 90 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285 180 195 195 90
+Polygon -1 true false 60 195 90 210 114 154 120 195 180 195 187 157 210 210 240 195 195 90 165 90 150 105 150 150 135 90 105 90
+Circle -7500403 true true 110 5 80
+Rectangle -7500403 true true 127 79 172 94
+Polygon -13345367 true false 120 90 120 180 120 195 90 285 105 300 135 300 150 225 165 300 195 300 210 285 180 195 180 90 172 89 165 135 135 135 127 90
+Polygon -6459832 true false 116 4 113 21 71 33 71 40 109 48 117 34 144 27 180 26 188 36 224 23 222 14 178 16 167 0
+Line -16777216 false 225 90 270 90
+Line -16777216 false 225 15 225 90
+Line -16777216 false 270 15 270 90
+Line -16777216 false 247 15 247 90
+Rectangle -6459832 true false 240 90 255 300
 
 plant
 false

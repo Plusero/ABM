@@ -30,7 +30,6 @@ def run_simulation(n_school,
     l_size_s = np.sqrt(n_school / rho_s)
     school_poses[0] = np.random.rand(n_school, 3) * l_size_s - l_size_s / 2
     school_poses[0, :, 2] = np.random.randn(n_school) * sigma_s
-
     # system dynamics over time
     current_school_poses = np.copy(school_poses[0])
     v_s = np.full((n_school,), v_s_max)
@@ -60,8 +59,6 @@ def run_simulation(n_school,
                                                                    zoa_s, kor_s, koo_s, koa_s)
             else:
                 force = np.zeros(2)
-            print("current school poses", current_school_poses)
-            print("current_school_poses[i, 2] ", current_school_poses[i, 2])
             # force is a two element vector, the first one being x-axis and the second one being y-axis
             d_theta = np.arctan2(force[1], force[0]) % (2 * np.pi)
             # necessary turn

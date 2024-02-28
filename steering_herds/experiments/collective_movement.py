@@ -89,7 +89,7 @@ def run(n_seeds=1,
                                       t_max=t_max, )
         np.save(save_folder + filename.format(TYPE="S",
                 SEED=seed) + ".npy", school_poses)
-
+        collective_visuals.run(seed, school_poses)
         if visualization:
             collective_visuals.run(seed, school_poses)
 
