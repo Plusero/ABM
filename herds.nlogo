@@ -1,7 +1,7 @@
 globals [
-  base-speed-herd
-  max-speed-bot
-  repulsion-bot
+  base-speed ; base speed for all agents
+  base-speed-herd ; base speed for herdanimals, base-speed * herd-speed-ratio
+  max-speed-bot ; maximum speed for robots, base-speed-herd * bot-speed-ratio
   max-turn; max turning  per tick
   d0  ; happy-zone-min
   d1  ; happy-zone-max
@@ -13,52 +13,49 @@ globals [
   entity-width
   dt ; time step size
   w-s-max; maximum turning
-  furthest-allowed
-  min-distance-to-herd
-  target-x
-  target-y
-  farmers-vision
+  furthest-allowed ; threshold distance for collection
+  min-distance-to-herd ; to prevent robot from crashing into herd
+  target-x ; x-coordinate of the target
+  target-y ; y-coordinate of the target
+  farmers-vision ; vision of the farmer to collect herdanimals
+  fence-range; to prevent animal from being stuck at the edge of the world
 ]
 breed [ herdanimals herdanimal ]
 breed [ robots robot ]
 breed [ farmers farmer]
 
 herdanimals-own [
-  flockmates
+  flockmates ; mates for animal-animal interaction
   robotmates ;; mates for animal-robot interaction
-  random-mates
-  t-force-x
-  t-force-y
-  t-force
-  t-force-direction
-  turn
-  real-herdanimal-heading
-  speed
-  dLCM
-  dTarget
-]
-
-farmers-own[
-
+  random-mates ; the random one in long-range model of neighbor
+  t-force-x ; total force in x-direction
+  t-force-y; total force in y-direction
+  t-force ; magnitude of total force
+  t-force-direction ; direction of total force
+  turn ; turning angle
+  real-herdanimal-heading ; heading in normal geometry
+  speed ; speed of the animal
+  dLCM ; distance to the local centre of mass
+  dTarget ; distance to the target
 ]
 
 links-own [
   d-x ; distance-x between two agents
   d-y ; distance-y between two agents
   vector-factor ;; happiness of the animal based on closeness of others and repulsiveness of robot
-  force-x
-  force-y
+  force-x; force of this link in x-direction
+  force-y; force of this link in y-direction
   real-link-heading
 ]
 
 robots-own [
-  repulsion
-  botspeed
-  real-robot-heading
-  visibles                    ; list of all herdanimals that are in unobstructed vision
-  furthest-visible
-  LCMy
-  LCMx                        ; location of the centre of mass calculated from all the visible herdanimals
+  botspeed ; speed of the robot
+  real-robot-heading ; heading in normal geometry
+  visibles  ; list of all herdanimals that are in unobstructed vision
+  furthest-visible ; furthest visible herdanimal
+  LCMy;x-coordinate of the local centre of mass
+  LCMx ;y-coordinate of the local centre of mass
+  distance-traveled;  distance traveled by the robot
 ]
 
 ;; Use a seed created by the NEW-SEED reporter
@@ -87,15 +84,25 @@ end
 
 to setup
   clear-all
-  set base-speed-herd 0.1
+  ; set up random seed,  default seed being 73
+  ifelse use-new-seed?[
+    use-new-seed
+  ]
+  [
+  use-seed-from-user
+  ]
+  ; set speed and turning parameters
+  set base-speed 0.1
+  set base-speed-herd base-speed * herd-speed-ratio
+  set max-speed-bot base-speed-herd * bot-speed-ratio
   set dt 1
-  set w-s-max 360
+  set w-s-max 360 ; don't set this value too small, otherwise the herdanimal will have a tendency to go right after flocking together
+  ; set up the world
+  set fence-range 2
   set-default-shape herdanimals "cow"
   set-default-shape robots   "target"
   set-default-shape farmers "person farmer"
   set entity-width 1
-  set robot-repulsion 10
-  set max-speed-bot 2
   set target-x (- max-pxcor / 2 )
   set target-y (- max-pycor / 2)
   ifelse autozones [
@@ -116,46 +123,40 @@ to setup
     set heading 0
     set color blue
     setxy (- max-pxcor / 2) (max-pycor / 2) ]
-  create-robots 1 [
-    set heading 0
-    set color blue
-    setxy ( max-pxcor / 2) (- max-pycor / 2) ]
   create-herdanimals population
-  [ set size 1.5
+  [ set size 2
     if first question != "D"
       [ set color yellow - 2 + random 7 ]  ;; random shades look nice
     setxy random max-pxcor random max-pycor
     rt random-float 360
     set flockmates no-turtles ]
-  ask patch target-x target-y [set pcolor orange]
   create-farmers 1
   [
   setxy target-x target-y
   set size 4
   ]
-
   reset-ticks
 end
 
 to go
-  ; "None"
   clear-links
   ask herdanimals [set color yellow]
-  ask robots [list-visibles]              ; this procedure results in a list of herdanimals visible to the robots
-  ask herdanimals [linking]               ; this procedure links all the herdanimals with their flockmates
-  ask herdanimals [set dTarget (distancexy target-x target-y)]
-  update-real-heading                     ; this procedure converts the inherent headings of all agents to usefull headings,, old headings: NESW 0,90,180,270 -> new headings: NESW
-  ask links [link-attribute-calculations] ; this procedure calulates the link attributes dx, dy, and happiness
-  ask herdanimals [movement]              ; this procedure results in movement for the herdanimals
+  ask robots [list-visibles]
+  ask herdanimals [linking]               ; links all the herdanimals with their flockmates
+  ask herdanimals [set dTarget (distancexy target-x target-y)] ; get distrance to target from herdanimals
+  update-real-heading                     ; converts the inherent headings of all agents to usefull headings,, old headings: NESW 0,90,180,270 -> new headings: NESW
+  ask links [link-attribute-calculations] ; calulates the link attributes dx, dy, and happiness
+  ask herdanimals [movement]              ; results in movement for the herdanimals
   if auto-shepherd
   [
    ask robots [botmove] ; this procedure results in movement for the robots
-   ask farmers [die-on-target]
+   ask farmers [die-on-target] ; results in the death of herdanimals in the farmer's vision
   ]
   tick
 end
 
 to list-visibles
+  ; get visible herdanimals in the obstructed vision of the robots
   set visibles no-turtles
   foreach [self] of herdanimals [ animal ->
     let ll2 ((distance animal) ^ 2)
@@ -179,15 +180,15 @@ to list-visibles
   ask visibles [set color blue]
   ask visibles [set dLCM (distancexy cmx cmy)]
   set furthest-visible (max-one-of visibles [dLCM])
-;  ask patch cmx cmy [set pcolor red]
 end
 
 to linking
-  ;; get robotmates
+  ; get robotmates
   set robotmates other robots in-radius robot-repulsion
   create-links-to robotmates
+  ; if not any robotmates, then get flockmates. Therefore, robotmates override the interaction with flockmates
   if not any? robotmates[
-     ;; get flockmates
+  ; get flockmates
   if first question = "1" [      ; checks which procedure is used for flocking in this case the "1" means considering all other herdanimals in radius vision
     find-flockmates-metric
   ]
@@ -197,7 +198,7 @@ to linking
   if first question = "3" [      ; checks which procedure is used for flocking in this case the "3" means considering only the k nearest neighbours in radius vision plus one random herdanimal
     find-flockmates-lr
   ]
-  create-links-to flockmates                      ; this procedure links the herdanimals with their flockmates to make calculations easier
+  create-links-to flockmates     ; this procedure links the herdanimals with their flockmates to make calculations easier
   ]
 end
 
@@ -209,21 +210,19 @@ end
 
 to update-real-heading-l
   if link-length != 0[
+    ;convert heading in Netlogo's weird geometry to normal geometry, same for real-heading functions
   set real-link-heading ( - link-heading + 90)
-  ;; convert to [-pi,pi]
   set real-link-heading (real-link-heading + 180) mod 360 - 180
   ]
 end
 
 to update-real-heading-r
   set real-robot-heading ( - heading + 90)
-  ;; convert to [-pi,pi]
   set real-robot-heading (real-robot-heading + 180) mod 360 - 180
 end
 
 to update-real-heading-h
   set real-herdanimal-heading ( - heading + 90)
-  ;; convert to [-pi,pi]
   set real-herdanimal-heading (real-herdanimal-heading + 180) mod 360 - 180
 end
 
@@ -235,9 +234,25 @@ end
 
 to movement
   update-heading
-  ifelse any? flockmates[        ; checks whether there are any flockmates
-    fd speed                    ; will set the repulsion random and attraction mates
+  ifelse any? flockmates[
+    fd speed
   ][fd base-speed-herd]
+  if xcor > (max-pxcor - fence-range)
+  [
+    set xcor  (max-pxcor - fence-range)
+  ]
+  if xcor < ( min-pxcor + fence-range )
+  [
+    set xcor (  min-pxcor + fence-range)
+  ]
+  if ycor > (max-pycor - fence-range )
+  [
+    set ycor ( max-pycor - fence-range)
+  ]
+  if ycor < (min-pycor + fence-range )
+  [
+    set ycor ( min-pycor + fence-range)
+  ]
 end
 
 to find-flockmates-metric   ;; herdanimal procedure
@@ -263,9 +278,6 @@ to find-flockmates-lr  ;; herdanimal procedure longrange
   set flockmates (turtle-set flockmates lr-one)
 end
 
-to find-nearest-neighbors ;; herdanimal procedure
-  set flockmates min-n-of knn flockmates [distance myself]
-end
 
 to calc-dxdy
   set d-x link-length * cos real-link-heading
@@ -273,6 +285,7 @@ to calc-dxdy
 end
 
 to factor-calc
+  ; use this factor to smooth the transition between the 3 zones, repulsion, alignment, and attraction
   ifelse link-length < d0 [
     set vector-factor (( 1 / ( 1 + exp ( -  k1 * ( (link-length) - x1 )))) - 1 )
   ][
@@ -298,8 +311,8 @@ to calc-force
   ]
   ]
   [
-     set force-x (- d-x)  * repulsion-weight
-     set force-y (- d-y)  * repulsion-weight
+     set force-x (- d-x)  * vector-factor * repulsion-weight
+     set force-y (- d-y)  * vector-factor * repulsion-weight
      set color red
   ]
 end
@@ -332,17 +345,17 @@ to update-heading
     ]
     set speed base-speed-herd * speed-factor
   ]
-  set heading (heading - 5 + random 10) ; to add randomness of movement
+  set heading (heading - Randomness / 2  + random Randomness) ; to add randomness of movement
   ; this procedure updates the heading (direction) of the herdanimal
 end
 
 
 to botmove
   ; move that botty
+  if any? visibles[
   let closest-ha (min-one-of visibles [distance myself])
-  ifelse (distance closest-ha) < min-distance-to-herd [
-
-    set botspeed 0
+    ifelse (distance closest-ha) < min-distance-to-herd [
+    set botspeed 0.01
   ][
     set botspeed 1
   ]
@@ -365,6 +378,8 @@ to botmove
     set heading towardsxy (target-x + x-comp) (target-y + y-comp)
   ]
   fd max-speed-bot * botspeed
+  set distance-traveled ( distance-traveled + max-speed-bot * botspeed )
+  ]
 end
 
 to move-up
@@ -386,15 +401,13 @@ end
 to move-left
   ask robots [ set heading 270
   fd 1]
-
 end
 
 to die-on-target
-  if  any? herdanimals in-radius 4[
-    ask herdanimals in-radius 4 [die]
+  if  any? herdanimals in-radius farmer-vision[
+    ask herdanimals in-radius farmer-vision [die]
   ]
-  end
-
+end
 
   ; Copyright 1998 Uri Wilensky.
   ; See Info tab for full copyright and license.
@@ -413,8 +426,8 @@ GRAPHICS-WINDOW
 1
 1
 0
-1
-1
+0
+0
 1
 -40
 40
@@ -468,8 +481,8 @@ SLIDER
 population
 population
 1
-50
-50.0
+100
+51.0
 1
 1
 NIL
@@ -498,7 +511,7 @@ CHOOSER
 question
 question
 "0 None" "1 Metric neighbor" "2 Topological neighbor" "3 Long-range neighbor"
-1
+3
 
 TEXTBOX
 12
@@ -705,7 +718,7 @@ Randomness
 Randomness
 0
 10
-10.0
+5.0
 0.1
 1
 NIL
@@ -760,13 +773,54 @@ SLIDER
 864
 318
 1037
-352
+351
 farmer-vision
 farmer-vision
 0
 10
 5.0
 1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+864
+369
+1007
+403
+use-new-seed?
+use-new-seed?
+1
+1
+-1000
+
+SLIDER
+861
+412
+1041
+446
+herd-speed-ratio
+herd-speed-ratio
+0
+10
+1.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+861
+454
+1034
+488
+bot-speed-ratio
+bot-speed-ratio
+0
+10
+10.0
+0.1
 1
 NIL
 HORIZONTAL
