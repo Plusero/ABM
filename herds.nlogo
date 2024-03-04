@@ -546,7 +546,7 @@ happyzone-max
 happyzone-max
 0
 100
-1.0
+13.0
 0.1
 1
 NIL
