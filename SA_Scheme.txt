@@ -1,0 +1,58 @@
+Interesting SA with default value:
+global vision, false
+furthest allowed, 90
+min-distance-to-herd, 6
+neighbor-model, long-range
+population, 50
+bot-speed-ratio, 10
+happyzone-max, 13 
+happyzone-min, 2
+vision, 30
+
+
+Rules:
+min-distance-to-herd < robot-repulsion
+happyzone-max + happyzone-min < vision
+
+
+SA all:
+vary: 
+["global-vision" true false]
+["furthest-allowed" [20 10 100]]
+["min-distance-to-herd" [2 2 10]]
+["model-neighbor"  "1 Metric neighbor" "2 Topological neighbor" "3 Long-range neighbor"]
+["population" [10 10 100]]
+["bot-speed-ratio" [1 1 10]]
+["happyzone-min" [1 1 5]]
+["happyzone-max" [1 2 15]]
+["vision" [20 2 40]]
+
+Measure runs:
+ticks
+[distance-traveled] of robots
+
+Run Metrics when:
+not any? herdanimals
+
+output:
+distance travelled
+ticks
+
+stop condition:
+not any? herdanimals
+
+SA Core:
+vary: 
+["global-vision" true false] 
+["bot-speed-ratio" [1 1 10]]
+["furthest-allowed" [20 5 100]]
+["min-distance-to-herd" [2 2 10]]
+["population" [10 10 100]]
+
+
+
+
+
+
+
+

@@ -13,8 +13,6 @@ globals [
   entity-width
   dt ; time step size
   w-s-max; maximum turning
-  furthest-allowed ; threshold distance for collection
-  min-distance-to-herd ; to prevent robot from crashing into herd
   target-x ; x-coordinate of the target
   target-y ; y-coordinate of the target
   farmers-vision ; vision of the farmer to collect herdanimals
@@ -85,11 +83,14 @@ end
 to setup
   clear-all
   ; set up random seed,  default seed being 73
-  ifelse use-new-seed?[
+  if first seed-option = "0" [
     use-new-seed
   ]
-  [
-  use-seed-from-user
+  if first seed-option = "1" [
+    use-seed-from-user
+  ]
+  if first seed-option = "2" [
+    random-seed 73
   ]
   ; set speed and turning parameters
   set base-speed 0.1
@@ -99,33 +100,27 @@ to setup
   set w-s-max 360 ; don't set this value too small, otherwise the herdanimal will have a tendency to go right after flocking together
   ; set up the world
   set fence-range 2
-  set-default-shape herdanimals "cow"
-  set-default-shape robots   "target"
+  set-default-shape herdanimals "sheep 2"
+  set-default-shape robots   "wolf"
   set-default-shape farmers "person farmer"
   set entity-width 1
   set target-x (- max-pxcor / 2 )
   set target-y (- max-pycor / 2)
-  ifelse autozones [
-    set d0 happyzone-min
-    set d1 happyzone-max
-  ][
-    set d0 10
-    set d1 30
-  ]
+  set d0 happyzone-min
+  set d1 (happyzone-min + happyzone-max)
   set x0 ( d0 / 2 )
   set x1 ( d1 * 2 )
   set k0 ( 5 / x0 )
   set k1 ( 10 / x1 )
   set knn 5
-  set furthest-allowed (3 * x1)
-  set min-distance-to-herd (3 * d0)
   create-robots 1 [
+    set size 4
     set heading 0
     set color blue
     setxy (- max-pxcor / 2) (max-pycor / 2) ]
   create-herdanimals population
   [ set size 2
-    if first question != "D"
+    if first model-neighbor != "D"
       [ set color yellow - 2 + random 7 ]  ;; random shades look nice
     setxy random max-pxcor random max-pycor
     rt random-float 360
@@ -158,16 +153,20 @@ end
 to list-visibles
   ; get visible herdanimals in the obstructed vision of the robots
   set visibles no-turtles
-  foreach [self] of herdanimals [ animal ->
-    let ll2 ((distance animal) ^ 2)
-    let a2 ((entity-width) ^ 2)
-    let arccos (( ll2 - a2 ) / ll2 )
-    ifelse arccos < -1 or arccos > 1  [
-      set visibles (turtle-set visibles animal)
-    ][
-      set heading towards animal
-      if not any? (herdanimals who-are-not animal) in-cone (distance animal) (acos(arccos)) [
+  ifelse global-vision [
+    set visibles (turtle-set visibles herdanimals)
+  ][
+    foreach [self] of herdanimals [ animal ->
+      let ll2 ((distance animal) ^ 2)
+      let a2 ((entity-width) ^ 2)
+      let arccos (( ll2 - a2 ) / ll2 )
+     ifelse arccos < -1 or arccos > 1  [
         set visibles (turtle-set visibles animal)
+      ][
+        set heading towards animal
+        if not any? (herdanimals who-are-not animal) in-cone (distance animal) (acos(arccos)) [
+          set visibles (turtle-set visibles animal)
+        ]
       ]
     ]
   ]
@@ -189,13 +188,13 @@ to linking
   ; if not any robotmates, then get flockmates. Therefore, robotmates override the interaction with flockmates
   if not any? robotmates[
   ; get flockmates
-  if first question = "1" [      ; checks which procedure is used for flocking in this case the "1" means considering all other herdanimals in radius vision
+  if first model-neighbor = "1" [      ; checks which procedure is used for flocking in this case the "1" means considering all other herdanimals in radius vision
     find-flockmates-metric
   ]
-  if first question = "2" [      ; checks which procedure is used for flocking in this case the "2" means considering only the k nearest neighbours in radius vision
+  if first model-neighbor = "2" [      ; checks which procedure is used for flocking in this case the "2" means considering only the k nearest neighbours in radius vision
     find-flockmates-knn
   ]
-  if first question = "3" [      ; checks which procedure is used for flocking in this case the "3" means considering only the k nearest neighbours in radius vision plus one random herdanimal
+  if first model-neighbor = "3" [      ; checks which procedure is used for flocking in this case the "3" means considering only the k nearest neighbours in radius vision plus one random herdanimal
     find-flockmates-lr
   ]
   create-links-to flockmates     ; this procedure links the herdanimals with their flockmates to make calculations easier
@@ -482,7 +481,7 @@ population
 population
 1
 100
-51.0
+50.0
 1
 1
 NIL
@@ -508,8 +507,8 @@ CHOOSER
 296
 250
 341
-question
-question
+model-neighbor
+model-neighbor
 "0 None" "1 Metric neighbor" "2 Topological neighbor" "3 Long-range neighbor"
 3
 
@@ -522,17 +521,6 @@ You can change the question\nwhile the simulation is running. \n(While the go bu
 11
 0.0
 0
-
-SWITCH
-11
-179
-116
-212
-autozones
-autozones
-0
-1
--1000
 
 SLIDER
 11
@@ -558,7 +546,7 @@ happyzone-max
 happyzone-max
 0
 100
-15.0
+1.0
 0.1
 1
 NIL
@@ -784,22 +772,11 @@ farmer-vision
 NIL
 HORIZONTAL
 
-SWITCH
-864
-369
-1007
-403
-use-new-seed?
-use-new-seed?
-1
-1
--1000
-
 SLIDER
 861
 412
 1041
-446
+445
 herd-speed-ratio
 herd-speed-ratio
 0
@@ -814,13 +791,64 @@ SLIDER
 861
 454
 1034
-488
+487
 bot-speed-ratio
 bot-speed-ratio
 0
 10
 10.0
 0.1
+1
+NIL
+HORIZONTAL
+
+SWITCH
+876
+60
+1005
+93
+global-vision
+global-vision
+1
+1
+-1000
+
+CHOOSER
+872
+11
+1010
+56
+seed-option
+seed-option
+"0 Random" "1 user-input" "2 fixed"
+2
+
+SLIDER
+861
+494
+1033
+527
+furthest-allowed
+furthest-allowed
+0
+100
+90.0
+1
+1
+NIL
+HORIZONTAL
+
+SLIDER
+863
+537
+1035
+570
+min-distance-to-herd
+min-distance-to-herd
+0
+10
+6.0
+1
 1
 NIL
 HORIZONTAL
@@ -833,6 +861,8 @@ This model is an alternate visualization of the Flocking model from the Biology 
 * Kornhauser, D., Wilensky, U., & Rand, W. (2009). Design guidelines for agent based model visualization. Journal of Artificial Societies and Social Simulation (JASSS), 12(2), 1. http://ccl.northwestern.edu/papers/2009/Kornhauser,Wilensky&Rand_DesignGuidelinesABMViz.pdf.
 
 ## WHAT IS IT?
+
+This model is
 
 This model is a version of the NetLogo Flocking model that adds visualizations.
 The Flocking model is an attempt to mimic the flocking of birds.  (The resulting motion also resembles schools of fish.)  The flocks that appear in this model are not created or led in any way by special leader birds.  Rather, each bird (aka boid) is following exactly the same set of rules, from which flocks emerge.
@@ -1164,6 +1194,19 @@ Polygon -7500403 true true 135 105 90 60 45 45 75 105 135 135
 Polygon -7500403 true true 165 105 165 135 225 105 255 45 210 60
 Polygon -7500403 true true 135 90 120 45 150 15 180 45 165 90
 
+sheep 2
+false
+0
+Polygon -7500403 true true 209 183 194 198 179 198 164 183 164 174 149 183 89 183 74 168 59 198 44 198 29 185 43 151 28 121 44 91 59 80 89 80 164 95 194 80 254 65 269 80 284 125 269 140 239 125 224 153 209 168
+Rectangle -7500403 true true 180 195 195 225
+Rectangle -7500403 true true 45 195 60 225
+Rectangle -16777216 true false 180 225 195 240
+Rectangle -16777216 true false 45 225 60 240
+Polygon -7500403 true true 245 60 250 72 240 78 225 63 230 51
+Polygon -7500403 true true 25 72 40 80 42 98 22 91
+Line -16777216 false 270 137 251 122
+Line -16777216 false 266 90 254 90
+
 square
 false
 0
@@ -1248,6 +1291,36 @@ Line -7500403 true 40 84 269 221
 Line -7500403 true 40 216 269 79
 Line -7500403 true 84 40 221 269
 
+wolf
+false
+0
+Polygon -7500403 true true 75 225 97 249 112 252 122 252 114 242 102 241 89 224 94 181 64 113 46 119 31 150 32 164 61 204 57 242 85 266 91 271 101 271 96 257 89 257 70 242
+Polygon -7500403 true true 216 73 219 56 229 42 237 66 226 71
+Polygon -7500403 true true 181 106 213 69 226 62 257 70 260 89 285 110 272 124 234 116 218 134 209 150 204 163 192 178 169 185 154 189 129 189 89 180 69 166 63 113 124 110 160 111 170 104
+Polygon -6459832 true true 252 143 242 141
+Polygon -6459832 true true 254 136 232 137
+Line -16777216 false 75 224 89 179
+Line -16777216 false 80 159 89 179
+Polygon -6459832 true true 262 138 234 149
+Polygon -7500403 true true 50 121 36 119 24 123 14 128 6 143 8 165 8 181 7 197 4 233 23 201 28 184 30 169 28 153 48 145
+Polygon -7500403 true true 171 181 178 263 187 277 197 273 202 267 187 260 186 236 194 167
+Polygon -7500403 true true 187 163 195 240 214 260 222 256 222 248 212 245 205 230 205 155
+Polygon -7500403 true true 223 75 226 58 245 44 244 68 233 73
+Line -16777216 false 89 181 112 185
+Line -16777216 false 31 150 47 118
+Polygon -16777216 true false 235 90 250 91 255 99 248 98 244 92
+Line -16777216 false 236 112 246 119
+Polygon -16777216 true false 278 119 282 116 274 113
+Line -16777216 false 189 201 203 161
+Line -16777216 false 90 262 94 272
+Line -16777216 false 110 246 119 252
+Line -16777216 false 190 266 194 274
+Line -16777216 false 218 251 219 257
+Polygon -16777216 true false 230 67 228 54 222 62 224 72
+Line -16777216 false 246 67 234 64
+Line -16777216 false 229 45 235 68
+Line -16777216 false 30 150 30 165
+
 x
 false
 0
@@ -1261,6 +1334,43 @@ setup
 repeat 200 [ go ]
 @#$#@#$#@
 @#$#@#$#@
+<experiments>
+  <experiment name="experiment" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <exitCondition>not any? herdanimals</exitCondition>
+    <metric>ticks</metric>
+    <metric>[distance-traveled] of robots</metric>
+    <runMetricsCondition>not any? herdanimals</runMetricsCondition>
+    <steppedValueSet variable="furthest-allowed" first="20" step="10" last="40"/>
+  </experiment>
+  <experiment name="SA-all" repetitions="1" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <exitCondition>not any? herdanimals</exitCondition>
+    <metric>ticks</metric>
+    <metric>[distance-traveled] of robots</metric>
+    <runMetricsCondition>not any? herdanimals</runMetricsCondition>
+    <enumeratedValueSet variable="global-vision">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="furthest-allowed" first="20" step="10" last="100"/>
+    <steppedValueSet variable="min-distance-to-herd" first="2" step="2" last="10"/>
+    <enumeratedValueSet variable="model-neighbor">
+      <value value="&quot;1 Metric neighbor&quot;"/>
+      <value value="&quot;2 Topological neighbor&quot;"/>
+      <value value="&quot;3 Long-range neighbor&quot;"/>
+    </enumeratedValueSet>
+    <steppedValueSet variable="population" first="10" step="10" last="100"/>
+    <steppedValueSet variable="bot-speed-ratio" first="1" step="1" last="10"/>
+    <steppedValueSet variable="happyzone-min" first="1" step="1" last="5"/>
+    <steppedValueSet variable="happyzone-max" first="1" step="2" last="15"/>
+    <steppedValueSet variable="vision" first="20" step="2" last="40"/>
+  </experiment>
+</experiments>
 @#$#@#$#@
 @#$#@#$#@
 default
