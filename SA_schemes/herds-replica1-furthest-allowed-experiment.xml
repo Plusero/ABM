@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE experiments SYSTEM "behaviorspace.dtd">
+<experiments>
+  <experiment name="furthest-allowed" repetitions="30" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <exitCondition>not any? herdanimals or ticks = 10000</exitCondition>
+    <metric>ticks</metric>
+    <metric>[distance-traveled] of robots</metric>
+    <runMetricsCondition>not any? herdanimals or ticks = 10000</runMetricsCondition>
+    <steppedValueSet variable="furthest-allowed" first="15" step="5" last="40"/>
+  </experiment>
+</experiments>

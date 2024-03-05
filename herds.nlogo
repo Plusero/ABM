@@ -496,7 +496,7 @@ vision
 vision
 0
 50
-30.0
+25.0
 0.5
 1
 patches
@@ -796,7 +796,7 @@ bot-speed-ratio
 bot-speed-ratio
 0
 10
-10.0
+5.0
 0.1
 1
 NIL
@@ -821,7 +821,7 @@ CHOOSER
 seed-option
 seed-option
 "0 Random" "1 user-input" "2 fixed"
-2
+0
 
 SLIDER
 861
@@ -831,8 +831,8 @@ SLIDER
 furthest-allowed
 furthest-allowed
 0
-100
-90.0
+50
+25.0
 1
 1
 NIL
@@ -847,7 +847,7 @@ min-distance-to-herd
 min-distance-to-herd
 0
 10
-6.0
+5.0
 1
 1
 NIL
@@ -1335,40 +1335,58 @@ repeat 200 [ go ]
 @#$#@#$#@
 @#$#@#$#@
 <experiments>
-  <experiment name="experiment" repetitions="1" runMetricsEveryStep="false">
+  <experiment name="global vs local" repetitions="30" runMetricsEveryStep="false">
     <setup>setup</setup>
     <go>go</go>
     <timeLimit steps="10000"/>
-    <exitCondition>not any? herdanimals</exitCondition>
+    <exitCondition>not any? herdanimals or ticks = 10000</exitCondition>
     <metric>ticks</metric>
     <metric>[distance-traveled] of robots</metric>
-    <runMetricsCondition>not any? herdanimals</runMetricsCondition>
-    <steppedValueSet variable="furthest-allowed" first="20" step="10" last="40"/>
-  </experiment>
-  <experiment name="SA-all" repetitions="1" runMetricsEveryStep="false">
-    <setup>setup</setup>
-    <go>go</go>
-    <timeLimit steps="10000"/>
-    <exitCondition>not any? herdanimals</exitCondition>
-    <metric>ticks</metric>
-    <metric>[distance-traveled] of robots</metric>
-    <runMetricsCondition>not any? herdanimals</runMetricsCondition>
+    <runMetricsCondition>not any? herdanimals or ticks = 10000</runMetricsCondition>
     <enumeratedValueSet variable="global-vision">
       <value value="true"/>
       <value value="false"/>
     </enumeratedValueSet>
-    <steppedValueSet variable="furthest-allowed" first="20" step="10" last="100"/>
-    <steppedValueSet variable="min-distance-to-herd" first="2" step="2" last="10"/>
-    <enumeratedValueSet variable="model-neighbor">
-      <value value="&quot;1 Metric neighbor&quot;"/>
-      <value value="&quot;2 Topological neighbor&quot;"/>
-      <value value="&quot;3 Long-range neighbor&quot;"/>
-    </enumeratedValueSet>
-    <steppedValueSet variable="population" first="10" step="10" last="100"/>
+  </experiment>
+  <experiment name="bot-speed" repetitions="30" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <exitCondition>not any? herdanimals or ticks = 10000</exitCondition>
+    <metric>ticks</metric>
+    <metric>[distance-traveled] of robots</metric>
+    <runMetricsCondition>not any? herdanimals or ticks = 10000</runMetricsCondition>
     <steppedValueSet variable="bot-speed-ratio" first="1" step="1" last="10"/>
-    <steppedValueSet variable="happyzone-min" first="1" step="1" last="5"/>
-    <steppedValueSet variable="happyzone-max" first="1" step="2" last="15"/>
-    <steppedValueSet variable="vision" first="20" step="2" last="40"/>
+  </experiment>
+  <experiment name="furthest-allowed" repetitions="30" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <exitCondition>not any? herdanimals or ticks = 10000</exitCondition>
+    <metric>ticks</metric>
+    <metric>[distance-traveled] of robots</metric>
+    <runMetricsCondition>not any? herdanimals or ticks = 10000</runMetricsCondition>
+    <steppedValueSet variable="furthest-allowed" first="15" step="5" last="40"/>
+  </experiment>
+  <experiment name="min-distance-to-herd" repetitions="30" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <exitCondition>not any? herdanimals or ticks = 10000</exitCondition>
+    <metric>ticks</metric>
+    <metric>[distance-traveled] of robots</metric>
+    <runMetricsCondition>not any? herdanimals or ticks = 10000</runMetricsCondition>
+    <steppedValueSet variable="min-distance-to-herd" first="3" step="1" last="9"/>
+  </experiment>
+  <experiment name="population" repetitions="30" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <exitCondition>not any? herdanimals or ticks = 10000</exitCondition>
+    <metric>ticks</metric>
+    <metric>[distance-traveled] of robots</metric>
+    <runMetricsCondition>not any? herdanimals or ticks = 10000</runMetricsCondition>
+    <steppedValueSet variable="population" first="10" step="10" last="100"/>
   </experiment>
 </experiments>
 @#$#@#$#@
