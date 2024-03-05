@@ -1388,6 +1388,72 @@ repeat 200 [ go ]
     <runMetricsCondition>not any? herdanimals or ticks = 10000</runMetricsCondition>
     <steppedValueSet variable="population" first="10" step="10" last="100"/>
   </experiment>
+  <experiment name="bot-speed-finer" repetitions="30" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <exitCondition>not any? herdanimals or ticks = 10000</exitCondition>
+    <metric>ticks</metric>
+    <metric>[distance-traveled] of robots</metric>
+    <runMetricsCondition>not any? herdanimals or ticks = 10000</runMetricsCondition>
+    <steppedValueSet variable="bot-speed-ratio" first="1" step="0.1" last="2"/>
+  </experiment>
+  <experiment name="bot-speed-global-local" repetitions="30" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <exitCondition>not any? herdanimals or ticks = 10000</exitCondition>
+    <metric>ticks</metric>
+    <metric>[distance-traveled] of robots</metric>
+    <runMetricsCondition>not any? herdanimals or ticks = 10000</runMetricsCondition>
+    <steppedValueSet variable="bot-speed-ratio" first="1" step="1" last="10"/>
+    <enumeratedValueSet variable="global-vision">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="min-distance-to-herd-global-local" repetitions="30" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <exitCondition>not any? herdanimals or ticks = 10000</exitCondition>
+    <metric>ticks</metric>
+    <metric>[distance-traveled] of robots</metric>
+    <runMetricsCondition>not any? herdanimals or ticks = 10000</runMetricsCondition>
+    <steppedValueSet variable="min-distance-to-herd" first="3" step="1" last="9"/>
+    <enumeratedValueSet variable="global-vision">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="population-global-local" repetitions="30" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <exitCondition>not any? herdanimals or ticks = 10000</exitCondition>
+    <metric>ticks</metric>
+    <metric>[distance-traveled] of robots</metric>
+    <runMetricsCondition>not any? herdanimals or ticks = 10000</runMetricsCondition>
+    <steppedValueSet variable="population" first="10" step="10" last="100"/>
+    <enumeratedValueSet variable="global-vision">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
+  <experiment name="furthest-allowed-global-local" repetitions="30" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <exitCondition>not any? herdanimals or ticks = 10000</exitCondition>
+    <metric>ticks</metric>
+    <metric>[distance-traveled] of robots</metric>
+    <runMetricsCondition>not any? herdanimals or ticks = 10000</runMetricsCondition>
+    <steppedValueSet variable="furthest-allowed" first="15" step="5" last="40"/>
+    <enumeratedValueSet variable="global-vision">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
 </experiments>
 @#$#@#$#@
 @#$#@#$#@
