@@ -1454,6 +1454,20 @@ repeat 200 [ go ]
       <value value="false"/>
     </enumeratedValueSet>
   </experiment>
+  <experiment name="bot-speed-finer-global-local" repetitions="30" runMetricsEveryStep="false">
+    <setup>setup</setup>
+    <go>go</go>
+    <timeLimit steps="10000"/>
+    <exitCondition>not any? herdanimals or ticks = 10000</exitCondition>
+    <metric>ticks</metric>
+    <metric>[distance-traveled] of robots</metric>
+    <runMetricsCondition>not any? herdanimals or ticks = 10000</runMetricsCondition>
+    <steppedValueSet variable="bot-speed-ratio" first="1" step="0.1" last="2"/>
+    <enumeratedValueSet variable="global-vision">
+      <value value="true"/>
+      <value value="false"/>
+    </enumeratedValueSet>
+  </experiment>
 </experiments>
 @#$#@#$#@
 @#$#@#$#@
