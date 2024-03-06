@@ -439,10 +439,10 @@ ticks
 30.0
 
 BUTTON
-10
-59
-87
-92
+8
+13
+85
+46
 NIL
 setup
 NIL
@@ -456,10 +456,10 @@ NIL
 1
 
 BUTTON
-93
-59
-198
-92
+91
+13
+172
+46
 go
 go
 T
@@ -473,10 +473,10 @@ NIL
 0
 
 SLIDER
-11
-106
-234
-139
+8
+78
+231
+111
 population
 population
 1
@@ -488,10 +488,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-11
-143
-234
-176
+8
+115
+231
+148
 vision
 vision
 0
@@ -503,30 +503,20 @@ patches
 HORIZONTAL
 
 CHOOSER
-10
-296
-250
-341
+7
+261
+181
+306
 model-neighbor
 model-neighbor
 "0 None" "1 Metric neighbor" "2 Topological neighbor" "3 Long-range neighbor"
 3
 
-TEXTBOX
-12
-8
-251
-55
-You can change the question\nwhile the simulation is running. \n(While the go button is pressed...)
-11
-0.0
-0
-
 SLIDER
-11
-256
-184
-289
+8
+221
+181
+254
 happyzone-min
 happyzone-min
 0
@@ -538,10 +528,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-11
-217
-184
-250
+8
+182
+181
+215
 happyzone-max
 happyzone-max
 0
@@ -553,10 +543,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-10
-344
-182
-377
+7
+309
+179
+342
 repulsion-weight
 repulsion-weight
 0
@@ -568,10 +558,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-10
-380
-182
-413
+7
+345
+179
+378
 alignment-weight
 alignment-weight
 0
@@ -583,10 +573,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-10
-417
-182
-450
+7
+382
+179
+415
 attraction-weight
 attraction-weight
 0
@@ -598,10 +588,10 @@ NIL
 HORIZONTAL
 
 BUTTON
-185
-10
-263
-44
+182
+12
+260
+46
 go-once
 go
 NIL
@@ -615,10 +605,10 @@ NIL
 1
 
 BUTTON
-934
-147
-997
-180
+940
+439
+1003
+472
 up
 move-up
 NIL
@@ -632,10 +622,10 @@ NIL
 1
 
 BUTTON
-933
-185
-996
-218
+939
+477
+1002
+510
 down
 move-down
 NIL
@@ -649,10 +639,10 @@ NIL
 1
 
 BUTTON
-866
-184
-929
-217
+872
+476
+935
+509
 left
 move-left
 NIL
@@ -666,10 +656,10 @@ NIL
 1
 
 BUTTON
-999
-186
-1062
-219
+1008
+477
+1071
+510
 right
 move-right
 NIL
@@ -683,10 +673,10 @@ NIL
 1
 
 SLIDER
-12
-455
-184
-488
+9
+420
+181
+453
 robot-repulsion
 robot-repulsion
 0
@@ -698,10 +688,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-11
-493
-183
-526
+8
+458
+180
+491
 Randomness
 Randomness
 0
@@ -713,10 +703,10 @@ NIL
 HORIZONTAL
 
 SWITCH
-865
-105
-1001
-138
+871
+397
+1007
+430
 auto-shepherd
 auto-shepherd
 0
@@ -725,9 +715,9 @@ auto-shepherd
 
 BUTTON
 866
-235
-977
-268
+66
+1005
+99
 use-new-seed
 use-new-seed
 NIL
@@ -742,9 +732,9 @@ NIL
 
 BUTTON
 867
-277
-1010
-310
+108
+1006
+141
 use-seed-from-user
 use-seed-from-user
 NIL
@@ -758,10 +748,10 @@ NIL
 1
 
 SLIDER
-864
-318
-1037
-351
+867
+150
+1010
+183
 farmer-vision
 farmer-vision
 0
@@ -773,10 +763,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-861
-412
-1041
-445
+7
+502
+180
+535
 herd-speed-ratio
 herd-speed-ratio
 0
@@ -788,10 +778,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-861
-454
-1034
-487
+9
+544
+182
+577
 bot-speed-ratio
 bot-speed-ratio
 0
@@ -803,10 +793,10 @@ NIL
 HORIZONTAL
 
 SWITCH
-876
-60
-1005
-93
+868
+226
+997
+259
 global-vision
 global-vision
 1
@@ -814,20 +804,20 @@ global-vision
 -1000
 
 CHOOSER
-872
-11
-1010
-56
+867
+12
+1005
+57
 seed-option
 seed-option
 "0 Random" "1 user-input" "2 fixed"
 0
 
 SLIDER
-861
-494
-1033
-527
+867
+272
+1039
+305
 furthest-allowed
 furthest-allowed
 0
@@ -839,10 +829,10 @@ NIL
 HORIZONTAL
 
 SLIDER
-863
-537
-1035
-570
+868
+314
+1040
+347
 min-distance-to-herd
 min-distance-to-herd
 0
@@ -852,6 +842,46 @@ min-distance-to-herd
 1
 NIL
 HORIZONTAL
+
+TEXTBOX
+13
+55
+163
+73
+Animal Generation
+16
+0.0
+1
+
+TEXTBOX
+9
+153
+195
+187
+Interaction Parameters
+16
+0.0
+1
+
+TEXTBOX
+868
+199
+1116
+233
+Herding Strategy Parameters
+16
+0.0
+1
+
+TEXTBOX
+873
+366
+1023
+384
+Debuggers
+16
+0.0
+1
 
 @#$#@#$#@
 ## ACKNOWLEDGMENT
